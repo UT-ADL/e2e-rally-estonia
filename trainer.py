@@ -3,14 +3,22 @@ from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
-from torchvision import transforms
+
+from network import PilotNet
+
 
 class Trainer:
 
-    def __init__(self, save_dir, device):
-        self.device = device
+    def __init__(self, save_dir):
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
+
+    def load_model(self, model_path):
+        model = PilotNet()
+        model.load_state_dict(torch.load(model_path))
+        model.to(self.device)
+        return model
 
     def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch, patience=10):
         best_valid_loss = float('inf')
@@ -63,6 +71,8 @@ class Trainer:
 
     def evaluate(self, model, iterator, criterion):
         epoch_loss = 0.0
+        all_predictions = []
+        all_true_angles = []
 
         model.eval()
 
@@ -75,6 +85,9 @@ class Trainer:
                 loss = criterion(predictions, steering_angles)
 
                 epoch_loss += loss.item()
+                all_predictions.extend(predictions)
+                all_true_angles.extend(steering_angles)
 
-        return epoch_loss / len(iterator)
+        total_loss = epoch_loss / len(iterator)
+        return total_loss, all_true_angles, all_predictions
 
