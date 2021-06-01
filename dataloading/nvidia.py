@@ -6,7 +6,6 @@ from torch.utils.data import Dataset
 import torchvision
 from torchvision import transforms
 
-
 class NvidiaResizeAndCrop(object):
     def __call__(self, data):
         xmin = 186
@@ -18,9 +17,8 @@ class NvidiaResizeAndCrop(object):
         scaled_width = int(width * scale)
         scaled_height = int(height * scale)
 
-        #cropped = transforms.functional.resized_crop(data["image"], ymin, xmin, scaled_height, scaled_width,
-        #                                             (height, width))
-        cropped = transforms.functional.crop(data["image"], ymin, xmin, scaled_height, scaled_width)
+        cropped = transforms.functional.resized_crop(data["image"], ymin, xmin, scaled_height, scaled_width,
+                                                     (height, width))
 
         data["image"] = cropped
         return data

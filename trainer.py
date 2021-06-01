@@ -69,10 +69,25 @@ class Trainer:
 
         return running_loss / len(loader)
 
+    def predict(self, model, dataset):
+        all_predictions = []
+        model.eval()
+
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False)
+
+        with torch.no_grad():
+            progress_bar = tqdm(total=len(dataloader), smoothing=0)
+            for data in dataloader:
+                inputs = data['image'].to(self.device)
+                predictions = model(inputs).squeeze(1)
+                all_predictions.extend(predictions.cpu().numpy())
+                progress_bar.update(1)
+
+        return all_predictions
+
+
     def evaluate(self, model, iterator, criterion):
         epoch_loss = 0.0
-        all_predictions = []
-        all_true_angles = []
 
         model.eval()
 
@@ -85,9 +100,7 @@ class Trainer:
                 loss = criterion(predictions, steering_angles)
 
                 epoch_loss += loss.item()
-                all_predictions.extend(predictions)
-                all_true_angles.extend(steering_angles)
 
         total_loss = epoch_loss / len(iterator)
-        return total_loss, all_true_angles, all_predictions
+        return total_loss
 
