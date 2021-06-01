@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from network import PilotNet
+import wandb
 
 
 class Trainer:
@@ -21,6 +22,9 @@ class Trainer:
         return model
 
     def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch, patience=10):
+        wandb.init(project="lanefollowing-ut")
+        wandb.watch(model, criterion)
+
         best_valid_loss = float('inf')
         epochs_of_no_improve = 0
 
@@ -40,6 +44,8 @@ class Trainer:
                 epochs_of_no_improve = 0
             else:
                 epochs_of_no_improve += 1
+
+            wandb.log({"epoch": epoch + 1, "train_loss": train_loss, "val_los": valid_loss})
 
             if epochs_of_no_improve == patience:
                 print(f'Early stopping, on epoch: {epoch + 1}.')
@@ -92,6 +98,7 @@ class Trainer:
         model.eval()
 
         with torch.no_grad():
+            progress_bar = tqdm(total=len(iterator), smoothing=0)
             for data in iterator:
                 inputs = data['image'].to(self.device)
                 steering_angles = data['steering_angle'].to(self.device)
@@ -100,6 +107,7 @@ class Trainer:
                 loss = criterion(predictions, steering_angles)
 
                 epoch_loss += loss.item()
+                progress_bar.update(1)
 
         total_loss = epoch_loss / len(iterator)
         return total_loss
