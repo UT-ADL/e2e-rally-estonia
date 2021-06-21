@@ -10,10 +10,11 @@ import wandb
 
 class Trainer:
 
-    def __init__(self, save_dir):
+    def __init__(self, save_dir, wandb_logging=False):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
+        self.wandb_logging = wandb_logging
 
     def load_model(self, model_path):
         model = PilotNet()
@@ -22,8 +23,9 @@ class Trainer:
         return model
 
     def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch, patience=10):
-        wandb.init(project="lanefollowing-ut")
-        wandb.watch(model, criterion)
+        if self.wandb_logging:
+            wandb.init(project="lanefollowing-ut")
+            wandb.watch(model, criterion)
 
         best_valid_loss = float('inf')
         epochs_of_no_improve = 0
@@ -45,11 +47,14 @@ class Trainer:
             else:
                 epochs_of_no_improve += 1
 
-            wandb.log({"epoch": epoch + 1, "train_loss": train_loss, "val_los": valid_loss})
+            if self.wandb_logging:
+                wandb.log({"epoch": epoch + 1, "train_loss": train_loss, "val_los": valid_loss})
 
             if epochs_of_no_improve == patience:
                 print(f'Early stopping, on epoch: {epoch + 1}.')
                 break
+
+        return best_valid_loss
 
     def train_epoch(self, model, loader, optimizer, criterion, progress_bar):
         running_loss = 0.0
