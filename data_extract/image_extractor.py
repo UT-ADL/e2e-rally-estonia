@@ -8,6 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 from pathlib import Path
 
+from argparse import ArgumentParser
 
 class NvidiaDriveImporter:
 
@@ -117,3 +118,14 @@ class NvidiaDriveImporter:
         camera_df.drop(["camera"], 1, inplace=True)
         return camera_df
 
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--bag-file", type=str)
+    args = parser.parse_args()
+
+    bags = [
+        args.bag_file
+    ]
+    importer = NvidiaDriveImporter(bags)
+    importer.import_bags()
