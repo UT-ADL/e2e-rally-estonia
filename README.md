@@ -9,6 +9,39 @@ https://docs.google.com/spreadsheets/d/1AaAbLjStrIYLI6l3RYshKFQz80Ov_siAtBU5WWGc
 
 ## Training
 
+### Environment setup
+
+Environment can set up using conda by following commands:
+
+```bash
+# set up pytorch environment
+conda create -n lanefollowing pytorch torchvision cudatoolkit=11.1 -c pytorch -c nvidia
+conda activate lanefollowing
+
+# install opencv and moviepy for visualising predictions, these are not needed for training
+pip install opencv-contrib-python
+# need to use specific version of moviepy as newer version did not work
+pip install moviepy==1.0.0 
+```
+
+Alternative approach is to recreate environment from exported `environment.yml`:
+```bash
+conda env create -f environment.yml
+```
+
+### Run training
+
+*PilotNet* model can be trained by running `train_pilotnet.ipynb` notebook. Make sure to set `root_path` to directory
+containing extracted bag files.
+
+There is no bash script to run training, but it should be fairly easy to create from the notebook when the need arises. 
+
+### Visualising results
+
+Notebook `test_tensorrt_model.ipynb` can be used to test trained model:
+- compare predicted angles to ground truth angles
+- compare performance of TensorRT and PyTorch models.
+- create video visualising predicted and ground truth angles
 
 ## Models
 
