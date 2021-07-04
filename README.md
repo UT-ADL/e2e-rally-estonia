@@ -20,7 +20,10 @@ Dataset can be extracted from bags running jupyter notebook `data_extract/extrac
 ./data_extract/extract.sh datasets/ut/nvidia-data/2021-06-21-14-31-56_e2e_vahi_back_nvidia_wide-v2_11.bag
 ```
 
-Dataset is extracted into same directory where the bag file resides.
+Dataset is extracted into the same directory where the bag file resides. Notebook `check_crop.ipynb` can be used to
+adjust the crop 
+
+![crop](./media/camera-crops.png "Front wide camera crop")
 
 ## Training
 
@@ -57,6 +60,8 @@ Notebook `test_tensorrt_model.ipynb` can be used to test trained model:
 - compare predicted angles to ground truth angles
 - compare performance of TensorRT and PyTorch models.
 - create video visualising predicted and ground truth angles
+
+![visualisation](./media/visualisation.png "visualisation")
 
 ## Models
 
