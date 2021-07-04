@@ -14,10 +14,12 @@ To extract bags, local ROS must be installed, which is easiest to do using:
 conda create -n ros ros-noetic-desktop -conda-forge -c robostack && conda activate ros
 ```
 
-Dataset can be extracted from bags running jupyter notebook `data_extract/extract_images.ipynb` or using bash script: 
+Dataset can be extracted from bags running jupyter notebook `data_extract/extract_images.ipynb` or using 
+`data_extract/extract.sh` bash script: 
 
 ```bash
-./data_extract/extract.sh datasets/ut/nvidia-data/2021-06-21-14-31-56_e2e_vahi_back_nvidia_wide-v2_11.bag
+cd data_extract
+./extract.sh datasets/ut/nvidia-data/2021-06-21-14-31-56_e2e_vahi_back_nvidia_wide-v2_11.bag
 ```
 
 Dataset is extracted into the same directory where the bag file resides. Notebook `check_crop.ipynb` can be used to
