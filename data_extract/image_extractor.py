@@ -12,8 +12,9 @@ from argparse import ArgumentParser
 
 class NvidiaDriveImporter:
 
-    def __init__(self, bag_files):
+    def __init__(self, bag_files, extract_dir):
         self.bag_files = bag_files
+        self.extract_dir = extract_dir
 
         # left 120'
         self.left_camera_topic = "/interfacea/link0/image/compressed"
@@ -58,9 +59,12 @@ class NvidiaDriveImporter:
 
         #  Create output folder (old data is deleted)
         bag_path = Path(bag_file)
-        root_folder = Path(bag_path.parent) / bag_path.stem
+        if self.extract_dir:  # extract to directory defined in argument
+            root_folder = Path(self.extract_dir) / bag_path.stem
+        else:  # extract to same directory where bag is
+            root_folder = Path(bag_path.parent) / bag_path.stem
         shutil.rmtree(root_folder, ignore_errors=True)
-        root_folder.mkdir()
+        root_folder.mkdir(parents=True)
 
         for camera_topic in self.camera_topics:
             camera_name = self.topic_to_camera_name_map[camera_topic]
@@ -154,10 +158,11 @@ class NvidiaDriveImporter:
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--bag-file", type=str)
+    parser.add_argument("--extract-dir", type=str)
     args = parser.parse_args()
 
     bags = [
         args.bag_file
     ]
-    importer = NvidiaDriveImporter(bags)
+    importer = NvidiaDriveImporter(bags, args.extract_dir)
     importer.import_bags()

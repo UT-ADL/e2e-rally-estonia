@@ -11,7 +11,7 @@ about the bag files can be found in [spreadsheet](https://docs.google.com/spread
 To extract bags, local ROS must be installed, which is easiest to do using:
 
 ```bash
-conda create -n ros ros-noetic-desktop -c conda-forge -c robostack && conda activate ros
+conda create -n ros ros-noetic-desktop pandas -c conda-forge -c robostack && conda activate ros
 ```
 
 Dataset can be extracted from bags running jupyter notebook `data_extract/extract_images.ipynb` or using 
