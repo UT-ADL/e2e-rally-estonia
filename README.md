@@ -5,13 +5,13 @@ is predicted using front wide camera. Throttle is not predicted and must be cont
 
 ## Dataset
 
-Recorded bags are stored on the UT Rocket HPC (rocket.hpc.ut.ee) in `/gpfs/hpc/projects/Bolt/bagfiles`. More information
+Recorded bags are stored on the UT Rocket HPC (rocket.hpc.ut.ee) in `/gpfs/space/projects/Bolt/bagfiles`. More information
 about the bag files can be found in [spreadsheet](https://docs.google.com/spreadsheets/d/1AaAbLjStrIYLI6l3RYshKFQz80Ov_siAtBU5WWGc8ew/edit#gid=0).
 
 To extract bags, local ROS must be installed, which is easiest to do using:
 
 ```bash
-conda create -n ros ros-noetic-desktop -conda-forge -c robostack && conda activate ros
+conda create -n ros ros-noetic-desktop -c conda-forge -c robostack && conda activate ros
 ```
 
 Dataset can be extracted from bags running jupyter notebook `data_extract/extract_images.ipynb` or using 
