@@ -5,5 +5,33 @@
 module load python/3.6.3/virtenv
 source activate ros2
 cd /gpfs/space/home/rometaid/nvidia-e2e/data_extract
-srun ./extract.sh /gpfs/space/projects/Bolt/bagfiles/2021-05-20-12-43-17_e2e_sulaoja_20_30.bag /gpfs/space/projects/Bolt/bagfiles/dataset
-srun ./extract.sh /gpfs/space/projects/Bolt/bagfiles/2021-05-20-12-51-29_e2e_sulaoja_20_30.bag /gpfs/space/projects/Bolt/bagfiles/dataset
+srun ./extract.sh /gpfs/space/projects/Bolt/bagfiles/2021-05-20-12-43-17_e2e_sulaoja_20_30.bag /gpfs/space/projects/Bolt/dataset
+srun ./extract.sh /gpfs/space/projects/Bolt/bagfiles/2021-05-20-12-51-29_e2e_sulaoja_20_30.bag /gpfs/space/projects/Bolt/dataset
+
+
+/home/romet/data/datasets/ut/nvidia-data/2021-05-20-12-43-17_e2e_sulaoja_20_30.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-05-20-12-51-29_e2e_sulaoja_20_30.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-05-20-13-44-06_e2e_sulaoja_10_10.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-05-20-13-51-21_e2e_sulaoja_10_10.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-05-28-15-07-56_e2e_sulaoja_20_30.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-05-28-15-17-19_e2e_sulaoja_20_30.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-05-28-15-19-48_e2e_sulaoja_20_30.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-07-14-06-31_e2e_rec_ss6.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-07-14-09-18_e2e_rec_ss6.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-07-14-20-07_e2e_rec_ss6.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-10-14-02-24_e2e_ss12_backwards.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-14-11-08-19_e2e_rec_ss14.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-14-11-22-05_e2e_rec_ss14.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-14-11-43-48_e2e_rec_ss14_backwards.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-10-15-03-16_e2e_ss3_backwards.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-09-15-42-05_e2e_rec_ss3_backwards.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-09-16-24-59_e2e_rec_ss13.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-09-16-50-22_e2e_rec_ss13_backwards.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-10-14-44-24_e2e_ss3_backwards.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-07-14-36-16_e2e_rec_ss6.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-09-13-55-03_e2e_rec_ss2_backwards.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-09-14-58-11_e2e_rec_ss3.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-10-12-59-59_e2e_ss4.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-10-13-19-22_e2e_ss4_backwards.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-10-13-51-34_e2e_ss12.bag
+/home/romet/data/datasets/ut/nvidia-data/2021-06-09-13-14-51_e2e_rec_ss2.bag

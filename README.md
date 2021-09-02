@@ -5,25 +5,9 @@ is predicted using front wide camera. Throttle is not predicted and must be cont
 
 ## Dataset
 
-Recorded bags are stored on the UT Rocket HPC (rocket.hpc.ut.ee) in `/gpfs/space/projects/Bolt/bagfiles`. More information
-about the bag files can be found in [spreadsheet](https://docs.google.com/spreadsheets/d/1AaAbLjStrIYLI6l3RYshKFQz80Ov_siAtBU5WWGc8ew/edit#gid=0).
+For information about dataset, check [_data extraction README_](data_extract/README.md).
 
-To extract bags, local ROS must be installed, which is easiest to do using:
-
-```bash
-conda create -n ros ros-noetic-desktop pandas -c conda-forge -c robostack && conda activate ros
-```
-
-Dataset can be extracted from bags running jupyter notebook `data_extract/extract_images.ipynb` or using 
-`data_extract/extract.sh` bash script: 
-
-```bash
-cd data_extract
-./extract.sh datasets/ut/nvidia-data/2021-06-21-14-31-56_e2e_vahi_back_nvidia_wide-v2_11.bag
-```
-
-Dataset is extracted into the same directory where the bag file resides. Notebook `check_crop.ipynb` can be used to
-adjust the crop 
+Notebook `check_crop.ipynb` can be used to adjust the crop. 
 
 ![crop](./media/camera-crops.png "Front wide camera crop")
 
