@@ -9,6 +9,7 @@ from tqdm import tqdm
 from pathlib import Path
 
 from argparse import ArgumentParser
+from tf.transformations import euler_from_quaternion
 
 class NvidiaDriveImporter:
 
@@ -32,10 +33,13 @@ class NvidiaDriveImporter:
         self.turn_topic = '/pacmod/parsed_tx/turn_rpt'
         self.autonomy_topic = '/pacmod/as_tx/enabled'
 
+        self.current_pose = '/current_pose'
+
         self.camera_topics = [self.left_camera_topic_old, self.left_camera_topic,
                               self.right_camera_topic_old, self.right_camera_topic,
                               self.front_wide_camera_topic_old, self.front_wide_camera_topic]
-        self.topics = self.camera_topics + [self.steer_topic, self.speed_topic, self.turn_topic, self.autonomy_topic]
+        self.topics = self.camera_topics + [self.steer_topic, self.speed_topic, self.turn_topic,
+                                            self.autonomy_topic, self.current_pose]
 
         self.topic_to_camera_name_map = {
             self.left_camera_topic_old: "left",
@@ -86,14 +90,14 @@ class NvidiaDriveImporter:
         speed_dict = defaultdict(list)
         turn_dict = defaultdict(list)
         camera_dict = defaultdict(list)
+        current_pose_dict = defaultdict(list)
 
         autonomous = False
         autonomy_changed = False
 
         progress = tqdm(total=bag.get_message_count(self.camera_topics))
         for topic, msg, ts in bag.read_messages(topics=self.topics):
-
-            stats[topic] += 1
+            #stats[topic] += 1
 
             if topic == self.autonomy_topic:
                 autonomy_changed = autonomous != msg.data
@@ -106,7 +110,27 @@ class NvidiaDriveImporter:
                 if topic == self.steer_topic:
                     steering_dict["timestamp"].append(msg_timestamp)
                     steering_dict["steering_angle"].append(msg.manual_input)
-                    steering_dict["autonomous"].append(autonomous)
+
+                elif topic == self.current_pose:
+                    current_pose_dict["timestamp"].append(msg_timestamp)
+
+                    current_pose_dict["position_x"].append(msg.pose.position.x)
+                    current_pose_dict["position_y"].append(msg.pose.position.y)
+                    current_pose_dict["position_z"].append(msg.pose.position.z)
+
+                    # current_pose_dict["orientation_x"].append(msg.pose.orientation.x)
+                    # current_pose_dict["orientation_y"].append(msg.pose.orientation.y)
+                    # current_pose_dict["orientation_z"].append(msg.pose.orientation.z)
+                    # current_pose_dict["orientation_w"].append(msg.pose.orientation.w)
+
+                    quaternion = [
+                        msg.pose.orientation.x, msg.pose.orientation.y,
+                        msg.pose.orientation.z, msg.pose.orientation.w
+                    ]
+                    roll, pitch, yaw = euler_from_quaternion(quaternion)
+                    current_pose_dict["roll"].append(roll)
+                    current_pose_dict["pitch"].append(pitch)
+                    current_pose_dict["yaw"].append(yaw)
 
                 elif topic == self.speed_topic:
                     speed_dict["timestamp"].append(msg_timestamp)
@@ -120,6 +144,7 @@ class NvidiaDriveImporter:
                     camera_name = self.topic_to_camera_name_map[topic]
                     output_folder = root_folder / camera_name
                     camera_dict["timestamp"].append(msg_timestamp)
+                    camera_dict["autonomous"].append(autonomous)
                     camera_dict["camera"].append(camera_name)
                     image_name = f"{msg_timestamp}.jpg"
                     camera_dict["filename"].append(str(Path(output_folder.stem) / image_name))
@@ -129,14 +154,14 @@ class NvidiaDriveImporter:
 
         bag.close()
 
-        camera_df = pd.DataFrame(data=camera_dict, columns=["timestamp", "camera", "filename"])
+        camera_df = pd.DataFrame(data=camera_dict, columns=["timestamp", "camera", "filename", "autonomous"])
         self.create_timestamp_index(camera_df)
 
         front_wide_camera_df = self.create_camera_df(camera_df, "front_wide")
         left_camera_df = self.create_camera_df(camera_df, "left")
         right_camera_df = self.create_camera_df(camera_df, "right")
 
-        steering_df = pd.DataFrame(data=steering_dict, columns=["timestamp", "steering_angle", "autonomous"])
+        steering_df = pd.DataFrame(data=steering_dict, columns=["timestamp", "steering_angle"])
         self.create_timestamp_index(steering_df)
 
         speed_df = pd.DataFrame(data=speed_dict, columns=["timestamp", "vehicle_speed"])
@@ -145,9 +170,16 @@ class NvidiaDriveImporter:
         turn_df = pd.DataFrame(data=turn_dict, columns=["timestamp", "turn_signal"])
         self.create_timestamp_index(turn_df)
 
+        current_pose_df = pd.DataFrame(data=current_pose_dict, columns=["timestamp",
+                                                                        "position_x", "position_y", "position_z",
+                                                                        # "orientation_x", "orientation_y", "orientation_z", "orientation_w",
+                                                                        "roll", "pitch", "yaw"])
+        self.create_timestamp_index(current_pose_df)
+
         merged = functools.reduce(lambda left, right:
                                   pd.merge(left, right, how='outer', left_index=True, right_index=True),
-                                  [front_wide_camera_df, left_camera_df, right_camera_df, turn_df, speed_df, steering_df])
+                                  [front_wide_camera_df, left_camera_df, right_camera_df, turn_df, speed_df,
+                                   current_pose_df, steering_df])
         merged.interpolate(method='time', inplace=True)
 
         filtered_df = merged.loc[front_wide_camera_df.index]
