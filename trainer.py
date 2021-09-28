@@ -10,8 +10,9 @@ import wandb
 
 class Trainer:
 
-    def __init__(self, save_dir, wandb_logging=False):
+    def __init__(self, save_dir, target_name="steering_angle", wandb_logging=False):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.target_name = target_name
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self.wandb_logging = wandb_logging
@@ -63,12 +64,12 @@ class Trainer:
 
         for i, data in enumerate(loader):
             inputs = data['image'].to(self.device)
-            steering_angles = data['steering_angle'].to(self.device)
+            target_values = data[self.target_name].to(self.device)
 
             optimizer.zero_grad()
 
             predictions = model(inputs).squeeze(1)
-            loss = criterion(predictions, steering_angles)
+            loss = criterion(predictions, target_values)
 
             loss.backward()
             optimizer.step()
@@ -106,10 +107,10 @@ class Trainer:
             progress_bar = tqdm(total=len(iterator), smoothing=0)
             for data in iterator:
                 inputs = data['image'].to(self.device)
-                steering_angles = data['steering_angle'].to(self.device)
+                target_values = data[self.target_name].to(self.device)
 
                 predictions = model(inputs).squeeze(1)
-                loss = criterion(predictions, steering_angles)
+                loss = criterion(predictions, target_values)
 
                 epoch_loss += loss.item()
                 progress_bar.update(1)

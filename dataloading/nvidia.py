@@ -78,9 +78,10 @@ class Normalize(object):
 
 
 class ImageDataset(Dataset):
-    def __init__(self, image_paths, steering_angles, transform=None):
+    def __init__(self, image_paths, steering_angles, vehicle_speed, transform=None):
         self.image_paths = image_paths
         self.steering_angles = steering_angles
+        self.vehicle_speed = vehicle_speed
         self.transform = transform
 
     def __len__(self):
@@ -90,7 +91,8 @@ class ImageDataset(Dataset):
         image = torchvision.io.read_image(self.image_paths[idx])
         data = {
             'image': image,
-            'steering_angle': np.array(self.steering_angles[idx])
+            'steering_angle': np.array(self.steering_angles[idx]),
+            'vehicle_speed': np.array(self.vehicle_speed[idx])
         }
 
         if self.transform:
@@ -99,42 +101,70 @@ class ImageDataset(Dataset):
         return data
 
 
-class NvidiaDataset(ImageDataset):
-    def __init__(self, dataset_paths, transform=None, camera="front_wide", steering_correction=0.0):
-        data = defaultdict(list)
+class NvidiaDataset(Dataset):
 
-        for dataset_path in dataset_paths:
-            camera_images, steering_angles, autonomous = self.read_dataset(dataset_path, camera)
-            data["images"].extend(camera_images)
-            data["steering_angle"].extend(steering_angles + steering_correction)
-            data["autonomous"].extend(autonomous)
+    N_WAYPOINTS = 5
 
-        super().__init__(data["images"], data["steering_angle"], transform)
-        self.autonomous = data["autonomous"]
+    def __init__(self, dataset_paths, transform=None, camera="front_wide"):
+
+        self.dataset_paths = dataset_paths
+        self.transform = transform
+        self.camera_name = camera
+
+        datasets = [self.read_dataset(dataset_path, camera) for dataset_path in dataset_paths]
+        self.frames = pd.concat(datasets)
 
     def __getitem__(self, idx):
-        image = torchvision.io.read_image(self.image_paths[idx])
+        frame = self.frames.iloc[idx]
+        image = torchvision.io.read_image(frame["image_path"])
+
         data = {
             'image': image,
-            'steering_angle': np.array(self.steering_angles[idx]),
-            'autonomous': np.array(self.autonomous[idx])
+            'steering_angle': np.array(frame["steering_angle"]),
+            'vehicle_speed': np.array(frame["vehicle_speed"]),
+            'waypoints': np.array([frame["x_1_offset"], frame["y_1_offset"],
+                                   frame["x_2_offset"], frame["y_2_offset"],
+                                   frame["x_3_offset"], frame["y_3_offset"],
+                                   frame["x_4_offset"], frame["y_4_offset"],
+                                   frame["x_5_offset"], frame["y_5_offset"]])
         }
 
         if self.transform:
             data = self.transform(data)
 
         return data
+
+    def __len__(self):
+        return len(self.frames.index)
 
     def read_dataset(self, dataset_path, camera):
         frames_df = pd.read_csv(dataset_path / "frames.csv")
+
+        # temp hack
+        if "autonomous" not in frames_df.columns:
+            frames_df["autonomous"] = False
+        #frames_df["autonomous"] = False
+
         frames_df = frames_df[frames_df['steering_angle'].notna()]  # TODO: one steering angle is NaN, why?
-        frames_df = frames_df[frames_df['left_filename'].notna()]
-        frames_df = frames_df[frames_df['right_filename'].notna()]
-        frames_df = frames_df[frames_df['front_wide_filename'].notna()]
-        steering_angles = frames_df["steering_angle"].to_numpy()
-        autonomous = frames_df["autonomous"].to_numpy()
+        frames_df = frames_df[frames_df['vehicle_speed'].notna()]
+        frames_df = frames_df[frames_df[f'{camera}_filename'].notna()]
+
+        vehicle_x = frames_df["position_x"]
+        vehicle_y = frames_df["position_y"]
+        for i in np.arange(1, self.N_WAYPOINTS + 1):
+            wp_global_x = frames_df["position_x"].shift(-i)
+            wp_global_y = frames_df["position_y"].shift(-i)
+            yaw = frames_df["yaw"]
+
+            wp_local_x = (wp_global_x - vehicle_x) * np.cos(yaw) + (wp_global_y - vehicle_y) * np.sin(yaw)
+            wp_local_y = -(wp_global_x - vehicle_x) * np.sin(yaw) + (wp_global_y - vehicle_y) * np.cos(yaw)
+            frames_df[f"x_{i}_offset"] = wp_local_x
+            frames_df[f"y_{i}_offset"] = wp_local_y
+
+            # Remove rows without trajectory offsets, should be last N_WAYPOINTS rows
+            frames_df = frames_df[frames_df[f"x_{i}_offset"].notna()]
 
         camera_images = frames_df[f"{camera}_filename"].to_numpy()
-        camera_images = [str(dataset_path / image_path) for image_path in camera_images]
+        frames_df["image_path"] = [str(dataset_path / image_path) for image_path in camera_images]
 
-        return camera_images, steering_angles, autonomous
+        return frames_df

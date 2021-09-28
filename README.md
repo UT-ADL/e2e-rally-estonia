@@ -27,6 +27,13 @@ pip install opencv-contrib-python
 # need to use specific version of moviepy as newer version did not work
 pip install moviepy==1.0.0 
 ```
+conda install scikit-image
+conda install jupyter pandas matplotlib tqdm
+conda install -c conda-forge wandb
+
+sudo apt-key add /var/nv-tensorrt-repo-${os}-${tag}/7fa2af80.pub
+sudo pip install nvidia-tensorrt==7.2.*
+
 
 Alternative approach is to recreate environment from exported `environment.yml`:
 ```bash
