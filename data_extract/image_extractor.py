@@ -162,7 +162,7 @@ class NvidiaDriveImporter:
                                 lidar_dict["timestamp"].append(oi.ts)
                                 lidar_dict["autonomous"].append(autonomous)
                                 image_name = f"{oi.ts}.jpg"
-                                lidar_dict["filename"].append(str(Path(output_folder.stem) / image_name))
+                                lidar_dict["lidar_filename"].append(str(Path(output_folder.stem) / image_name))
                                 cv2.imwrite(str(output_folder / image_name), lidar_image)
                         oi = OusterImage(msg_timestamp)
                         first = False
