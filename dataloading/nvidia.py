@@ -104,6 +104,7 @@ class ImageDataset(Dataset):
 class NvidiaDataset(Dataset):
 
     N_WAYPOINTS = 5
+    CAP_WAYPOINTS = 10
 
     def __init__(self, dataset_paths, transform=None, camera="front_wide"):
 
@@ -152,8 +153,8 @@ class NvidiaDataset(Dataset):
         vehicle_x = frames_df["position_x"]
         vehicle_y = frames_df["position_y"]
         for i in np.arange(1, self.N_WAYPOINTS + 1):
-            wp_global_x = frames_df["position_x"].shift(-i)
-            wp_global_y = frames_df["position_y"].shift(-i)
+            wp_global_x = frames_df["position_x"].shift(-i * self.CAP_WAYPOINTS)
+            wp_global_y = frames_df["position_y"].shift(-i * self.CAP_WAYPOINTS)
             yaw = frames_df["yaw"]
 
             wp_local_x = (wp_global_x - vehicle_x) * np.cos(yaw) + (wp_global_y - vehicle_y) * np.sin(yaw)
