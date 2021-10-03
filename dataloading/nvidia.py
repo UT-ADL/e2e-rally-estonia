@@ -65,8 +65,6 @@ class NvidiaSideCameraZoom(object):
         data["image"] = cropped
         return data
 
-
-
 class Normalize(object):
     def __call__(self, data, transform=None):
         #normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
@@ -75,31 +73,6 @@ class Normalize(object):
         #data["image"] = normalize(image)
         data["image"] = image
         return data
-
-
-class ImageDataset(Dataset):
-    def __init__(self, image_paths, steering_angles, vehicle_speed, transform=None):
-        self.image_paths = image_paths
-        self.steering_angles = steering_angles
-        self.vehicle_speed = vehicle_speed
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.steering_angles)
-
-    def __getitem__(self, idx):
-        image = torchvision.io.read_image(self.image_paths[idx])
-        data = {
-            'image': image,
-            'steering_angle': np.array(self.steering_angles[idx]),
-            'vehicle_speed': np.array(self.vehicle_speed[idx])
-        }
-
-        if self.transform:
-            data = self.transform(data)
-
-        return data
-
 
 class NvidiaDataset(Dataset):
 
@@ -139,7 +112,7 @@ class NvidiaDataset(Dataset):
         return len(self.frames.index)
 
     def read_dataset(self, dataset_path, camera):
-        frames_df = pd.read_csv(dataset_path / "frames.csv")
+        frames_df = pd.read_csv(dataset_path / "nvidia_frames.csv")
 
         # temp hack
         if "autonomous" not in frames_df.columns:
