@@ -1,3 +1,5 @@
+import numpy as np
+
 from tqdm.auto import tqdm
 from pathlib import Path
 
@@ -81,11 +83,9 @@ class Trainer:
 
         return running_loss / len(loader)
 
-    def predict(self, model, dataset):
+    def predict(self, model, dataloader):
         all_predictions = []
         model.eval()
-
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False)
 
         with torch.no_grad():
             progress_bar = tqdm(total=len(dataloader), smoothing=0)
@@ -118,3 +118,29 @@ class Trainer:
         total_loss = epoch_loss / len(iterator)
         return total_loss
 
+    def calculate_whiteness(self, steering_angles, fps=30):
+        current_angles = steering_angles[:-1]
+        next_angles = steering_angles[1:]
+        delta_angles = next_angles - current_angles
+        whiteness = np.sqrt(((delta_angles * fps) ** 2).mean())
+        return whiteness
+
+    def calculate_open_loop_metrics(self, model, dataloader, fps):
+        predictions = self.predict(model, dataloader)
+        predicted_degrees = np.array(predictions) / np.pi * 180
+        true_degrees = dataloader.dataset.frames.steering_angle.to_numpy() / np.pi * 180
+        errors = np.abs(true_degrees - predicted_degrees)
+        mae = errors.mean()
+        rmse = np.sqrt((errors ** 2).mean())
+        max = errors.max()
+
+        whiteness = self.calculate_whiteness(predicted_degrees, fps)
+        expert_whiteness = self.calculate_whiteness(true_degrees, fps)
+
+        return {
+            'MAE': mae,
+            'RMSE': rmse,
+            'Max': max,
+            'Whiteness': whiteness,
+            'Expert whiteness': expert_whiteness
+        }
