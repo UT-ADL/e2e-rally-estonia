@@ -129,6 +129,7 @@ class NvidiaDataset(Dataset):
             wp_global_x = frames_df["position_x"].shift(-i * self.CAP_WAYPOINTS)
             wp_global_y = frames_df["position_y"].shift(-i * self.CAP_WAYPOINTS)
             yaw = frames_df["yaw"]
+            frames_df["yaw"] = yaw
 
             wp_local_x = (wp_global_x - vehicle_x) * np.cos(yaw) + (wp_global_y - vehicle_y) * np.sin(yaw)
             wp_local_y = -(wp_global_x - vehicle_x) * np.sin(yaw) + (wp_global_y - vehicle_y) * np.cos(yaw)
