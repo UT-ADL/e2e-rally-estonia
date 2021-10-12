@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=33-42
+#SBATCH --array=34-42
 BAGS=('2021-05-20-12-36-10_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-43-17_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-51-29_e2e_sulaoja_20_30.bag' \
