@@ -27,7 +27,7 @@ class Trainer:
 
     def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch, patience=10):
         if self.wandb_logging:
-            wandb.init(project="lanefollowing-ut")
+            wandb.init(project="lanefollowing-ut-vahi")
             wandb.watch(model, criterion)
 
         best_valid_loss = float('inf')
