@@ -1,22 +1,23 @@
-import numpy as np
-
-from tqdm.auto import tqdm
+from datetime import datetime
 from pathlib import Path
 
+import numpy as np
+import onnx
 import torch
-from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
 
-from network import PilotNet
 import wandb
+from network import PilotNet
 
 
 class Trainer:
 
-    def __init__(self, save_dir, target_name="steering_angle", wandb_logging=False):
+    def __init__(self, model_name, target_name="steering_angle", wandb_logging=False):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.target_name = target_name
-        self.save_dir = Path(save_dir)
-        self.save_dir.mkdir(parents=True, exist_ok=True)
+        datetime_prefix = datetime.today().strftime('%Y%m%d%H%M%S')
+        self.save_dir = Path("models") / f"{datetime_prefix}_{model_name}"
+        self.save_dir.mkdir(parents=True, exist_ok=False)
         self.wandb_logging = wandb_logging
 
     def load_model(self, model_path):
@@ -57,7 +58,34 @@ class Trainer:
                 print(f'Early stopping, on epoch: {epoch + 1}.')
                 break
 
+        self.save_models(model, valid_loader)
+
+        best_model = self.load_model(self.save_dir / "best.pt")
+        metrics = self.calculate_open_loop_metrics(best_model, valid_loader, fps=30)
+        print(metrics)
+        if self.wandb_logging:
+            wandb.log(metrics)
+
         return best_valid_loss
+
+    def save_models(self, model, valid_loader):
+        torch.save(model.state_dict(), self.save_dir / "last.pt")
+        if self.wandb_logging:
+            wandb.save(f"{self.save_dir}/last.pt")
+            wandb.save(f"{self.save_dir}/best.pt")
+
+        self.save_onnx(valid_loader)
+
+    def save_onnx(self, valid_loader):
+        best_model = PilotNet()
+        best_model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
+        best_model.to(self.device)
+
+        data = iter(valid_loader).next()
+        sample_inputs = data['image'].to(self.device)
+        torch.onnx.export(best_model, sample_inputs, f"{self.save_dir}/best.onnx")
+
+        onnx.checker.check_model(f"{self.save_dir}/best.onnx")
 
     def train_epoch(self, model, loader, optimizer, criterion, progress_bar):
         running_loss = 0.0
