@@ -1,31 +1,33 @@
-import numpy as np
-from pathlib import Path
-import cv2
+import argparse
 import math
-import shutil
-from skimage import io
 import os
-from moviepy.editor import ImageSequenceClip
+import shutil
+from pathlib import Path
 
+import cv2
+import numpy as np
+from moviepy.editor import ImageSequenceClip
+from skimage import io
 from tqdm.auto import tqdm
 
 from dataloading.nvidia import NvidiaDataset
 
 
-def create_driving_video(frames_folder):
-    frames = NvidiaDataset(["/home/romet/projects/ut/wp4/autonomous/2021-09-14-14-21-40-m1-backwards-sharp"], camera="front_wide")
+def create_driving_video(dataset_folder):
+    dataset_path = Path(dataset_folder)
+    frames = NvidiaDataset([dataset_path], camera="front_wide")
 
-    temp_frames_folder = Path("./temp_frames")
+    temp_frames_folder = dataset_path / 'temp'
     shutil.rmtree(temp_frames_folder, ignore_errors=True)
     temp_frames_folder.mkdir()
 
     draw_frames(frames, temp_frames_folder)
-    output_video = "output/2021-09-14-14-21-40-m1-backwards-sharp.mp4"
-    convert_frames_to_video(temp_frames_folder, output_video, fps=30)
+    output_video_path = dataset_path / 'video.mp4'
+    convert_frames_to_video(temp_frames_folder, output_video_path, fps=30)
 
     shutil.rmtree(temp_frames_folder, ignore_errors=True)
 
-    print(f"Output video {output_video} created.")
+    print(f"Output video {output_video_path} created.")
 
 
 def draw_steering_angle(frame, steering_angle, steering_wheel_radius, steering_position, size, color):
@@ -76,4 +78,20 @@ def convert_frames_to_video(frames_folder, output_video_path, fps=25):
 
     print("Creating video {}, FPS={}".format(frames_folder, fps))
     clip = ImageSequenceClip(image_list, fps=fps)
-    clip.write_videofile(output_video_path)
+    clip.write_videofile(str(output_video_path))
+
+
+if __name__ == "__main__":
+    argparser = argparse.ArgumentParser()
+
+    argparser.add_argument(
+        '--dataset-folder',
+        required=True,
+        help='Path to a dataset extracted from a bag file'
+    )
+
+    args = argparser.parse_args()
+    dataset_folder = args.dataset_folder
+    print("Creating video from: ", dataset_folder)
+
+    create_driving_video(dataset_folder)
