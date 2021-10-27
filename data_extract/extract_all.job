@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=48-51
+#SBATCH --array=52-61
 BAGS=('2021-05-20-12-36-10_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-43-17_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-51-29_e2e_sulaoja_20_30.bag' \
@@ -56,7 +56,17 @@ BAGS=('2021-05-20-12-36-10_e2e_sulaoja_20_30.bag' \
     '2021-10-20-14-55-47_e2e_rec_vastse_ss13_17.bag' \
     '2021-10-20-15-11-29_e2e_rec_vastse_ss13_17_back.bag' \
     '2021-10-20-13-57-51_e2e_rec_neeruti_ss19_22.bag' \
-    '2021-10-20-14-15-07_e2e_rec_neeruti_ss19_22_back.bag'
+    '2021-10-20-14-15-07_e2e_rec_neeruti_ss19_22_back.bag' \
+    '2021-10-26-10-49-06_e2e_rec_ss20_elva.bag' \
+    '2021-10-26-11-08-59_e2e_rec_ss20_elva_back.bag' \
+    '2021-10-25-17-31-48_e2e_rec_ss2_arula.bag' \
+    '2021-10-25-17-06-34_e2e_rec_ss2_arula_back.bag' \
+    '2021-10-20-11-03-04_e2e_rec_vahi_06_spring1.bag' \
+    '2021-10-20-11-23-26_e2e_rec_vahi_back_08_spring1.bag' \
+    '2021-10-20-11-50-26_e2e_rec_vahi_06_spring2.bag' \
+    '2021-10-20-12-06-11_e2e_rec_vahi_back_08_spring2.bag' \
+    '2021-10-20-12-28-55_e2e_rec_vahi_06_autumn01.bag' \
+    '2021-10-20-12-44-34_e2e_rec_vahi_back_08_autumn01.bag'
     )
 
 module load python/3.6.3/virtenv
