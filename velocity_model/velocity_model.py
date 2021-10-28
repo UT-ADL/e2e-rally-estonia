@@ -10,6 +10,7 @@ class VelocityModel:
         self.tree = BallTree(self.positions_df[["position_x", "position_y", "position_x2", "position_y2"]])
 
     def find_speed_for_position(self, x, y, yaw):
+
         x2 = x + (self.vector_velocity * np.cos(yaw))
         y2 = y + (self.vector_velocity * np.sin(yaw))
 

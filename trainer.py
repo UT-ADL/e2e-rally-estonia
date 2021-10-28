@@ -15,14 +15,19 @@ class Trainer:
     def __init__(self, model_name, target_name="steering_angle", wandb_logging=False):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.target_name = target_name
-        datetime_prefix = datetime.today().strftime('%Y%m%d%H%M%S')
-        self.save_dir = Path("models") / f"{datetime_prefix}_{model_name}"
-        self.save_dir.mkdir(parents=True, exist_ok=False)
         self.wandb_logging = wandb_logging
+
+        if model_name:
+            datetime_prefix = datetime.today().strftime('%Y%m%d%H%M%S')
+            self.save_dir = Path("models") / f"{datetime_prefix}_{model_name}"
+            self.save_dir.mkdir(parents=True, exist_ok=False)
+
+    def force_cpu(self):
+        self.device = 'cpu'
 
     def load_model(self, model_path):
         model = PilotNet()
-        model.load_state_dict(torch.load(model_path))
+        model.load_state_dict(torch.load(model_path, map_location=torch.device(self.device)))
         model.to(self.device)
         return model
 

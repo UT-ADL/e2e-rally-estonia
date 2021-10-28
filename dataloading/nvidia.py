@@ -79,8 +79,8 @@ class NvidiaDataset(Dataset):
     N_WAYPOINTS = 5
     CAP_WAYPOINTS = 10
 
-    def __init__(self, dataset_paths, transform=None, camera="front_wide"):
-
+    def __init__(self, dataset_paths, transform=None, camera="front_wide", name="Nvidia dataset"):
+        self.name = name
         self.dataset_paths = dataset_paths
         self.transform = transform
         self.camera_name = camera
@@ -96,7 +96,11 @@ class NvidiaDataset(Dataset):
             'image': image,
             'steering_angle': np.array(frame["steering_angle"]),
             'vehicle_speed': np.array(frame["vehicle_speed"]),
-            'autonomous': np.array(frame["autonomous"])
+            'autonomous': np.array(frame["autonomous"]),
+            'position_x': np.array(frame["position_x"]),
+            'position_y': np.array(frame["position_y"]),
+            'yaw': np.array(frame["yaw"]),
+            'turn_signal': np.array(frame["turn_signal"]),
             # 'waypoints': np.array([frame["x_1_offset"], frame["y_1_offset"],
             #                        frame["x_2_offset"], frame["y_2_offset"],
             #                        frame["x_3_offset"], frame["y_3_offset"],
