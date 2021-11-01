@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=62-63
+#SBATCH --array=64
 BAGS=('2021-05-20-12-36-10_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-43-17_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-51-29_e2e_sulaoja_20_30.bag' \
@@ -68,7 +68,8 @@ BAGS=('2021-05-20-12-36-10_e2e_sulaoja_20_30.bag' \
     '2021-10-20-12-28-55_e2e_rec_vahi_06_autumn01.bag' \
     '2021-10-20-12-44-34_e2e_rec_vahi_back_08_autumn01.bag' \
     '2021-09-30-15-56-59_e2e_ss14_attempt_2.bag' \
-    '2021-10-11-16-06-44_e2e_rec_ss2.bag'
+    '2021-10-11-16-06-44_e2e_rec_ss2.bag' \
+    '2021-10-07-12-54-17_e2e_rec_ss4'
     )
 
 module load python/3.6.3/virtenv
