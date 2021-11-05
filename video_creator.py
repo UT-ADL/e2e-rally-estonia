@@ -37,7 +37,6 @@ def create_driving_video(dataset_folder):
 def create_prediction_video(dataset_folder, model_path):
     dataset_path = Path(dataset_folder)
     dataset = NvidiaDataset([dataset_path], name=dataset_path.name)
-    dataset.frames = dataset.frames[0:500]
 
     temp_frames_folder = dataset_path / 'temp'
     shutil.rmtree(temp_frames_folder, ignore_errors=True)
@@ -57,17 +56,14 @@ def create_prediction_video(dataset_folder, model_path):
 def get_steering_predictions(dataset_path, model_path):
     print(f"{dataset_path.name}: steering predictions")
     trainer = Trainer(None)
-    trainer.force_cpu()  # not enough memory on GPU for parallel processing
+    #trainer.force_cpu()  # not enough memory on GPU for parallel processing  # TODO: make input argument
     torch_model = trainer.load_model(model_path)
     torch_model.eval()
 
     tr = transforms.Compose([NvidiaCropWide(), Normalize()])
     dataset = NvidiaDataset([dataset_path], tr, name=dataset_path.name)
-    dataset.frames = dataset.frames[0:500]
-    validloader_tr = torch.utils.data.DataLoader(dataset,
-                                                 batch_size=64,
-                                                 shuffle=False,
-                                                 num_workers=1)
+    validloader_tr = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False,
+                                         num_workers=16, pin_memory=True, persistent_workers=True)
     steering_predictions = trainer.predict(torch_model, validloader_tr)
     return steering_predictions
 

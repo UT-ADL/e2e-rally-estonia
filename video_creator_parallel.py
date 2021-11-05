@@ -55,7 +55,7 @@ DATASETS = [
     "2021-10-25-17-31-48_e2e_rec_ss2_arula",
     "2021-10-25-17-06-34_e2e_rec_ss2_arula_back",
     "2021-10-11-14-50-59_e2e_rec_vahi",
-    "2021-10-14-13-08-51_e2e_rec_vahi_backwards"
+    "2021-10-14-13-08-51_e2e_rec_vahi_backwards",
 
     "2021-05-28-15-19-48_e2e_sulaoja_20_30",
     "2021-06-07-14-20-07_e2e_rec_ss6",
@@ -69,12 +69,12 @@ DATASETS = [
 
 
 def create_video(dataset_folder):
-    model_path = 'models/20211019152624_autumn-v1/best.pt'
+    model_path = 'models/20211102005651_autumn-v2/best.pt'
     create_prediction_video(ROOT_PATH / dataset_folder, model_path=model_path)
 
 
 def main():
-    pool = ProcessPoolExecutor(max_workers=60)
+    pool = ProcessPoolExecutor(max_workers=16)
     list(pool.map(create_video, DATASETS))
 
 if __name__ == '__main__':
