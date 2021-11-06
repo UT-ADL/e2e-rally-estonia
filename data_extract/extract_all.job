@@ -4,8 +4,20 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=64
-BAGS=('2021-05-20-12-36-10_e2e_sulaoja_20_30.bag' \
+#SBATCH --array=0-10
+BAGS=(
+    '2021-21-03-elva-test/2021-11-03-12-35-19_e2e_rec_elva_autumn-v3.bag' \
+    '2021-21-03-elva-test/2021-11-03-12-53-38_e2e_rec_elva_back_autumn-v3.bag' \
+    '2021-21-03-elva-test/2021-11-03-13-13-16_e2e_rec_elva_wide-v2.bag' \
+    '2021-21-03-elva-test/2021-11-03-13-30-48_e2e_rec_elva_back_wide-v2.bag' \
+    '2021-21-03-elva-test/2021-11-03-13-51-53_e2e_rec_elva_autumn-v1.bag' \
+    '2021-21-03-elva-test/2021-11-03-14-02-07_e2e_rec_elva_autumn-v1_continue.bag' \
+    '2021-21-03-elva-test/2021-11-03-14-12-10_e2e_rec_elva_back_autumn-v1.bag' \
+    '2021-21-03-elva-test/2021-11-03-14-31-14_e2e_rec_elva_autumn-v3-last.bag' \
+    '2021-21-03-elva-test/2021-11-03-14-48-21_e2e_rec_elva_back_autumn-v3-last.bag' \
+    '2021-21-03-elva-test/2021-11-03-15-07-12_e2e_rec_elva_autumn-v3-drive2.bag' \
+    '2021-21-03-elva-test/2021-11-03-15-25-36_e2e_rec_elva_back_autumn-v3-drive2.bag' \
+    '2021-05-20-12-36-10_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-43-17_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-51-29_e2e_sulaoja_20_30.bag' \
     '2021-05-20-13-44-06_e2e_sulaoja_10_10.bag' \
