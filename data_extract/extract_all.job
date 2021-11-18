@@ -4,8 +4,14 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=0-10
+#SBATCH --array=0-6
 BAGS=(
+    '2021-11-17-13-12-50_e2e_rec_elva_back_camera_no_turns.bag' \
+    '2021-11-17-12-58-52_e2e_rec_elva_camera_no_turns.bag' \
+    '2021-11-17-12-43-21_e2e_rec_elva_back_camera.bag' \
+    '2021-11-17-12-29-22_e2e_rec_elva_camera.bag' \
+    '2021-11-17-12-12-32_e2e_rec_elva_back_lidar.bag' \
+    '2021-11-17-11-55-59_e2e_rec_elva_lidar.bag' \
     '2021-21-03-elva-test/2021-11-03-12-35-19_e2e_rec_elva_autumn-v3.bag' \
     '2021-21-03-elva-test/2021-11-03-12-53-38_e2e_rec_elva_back_autumn-v3.bag' \
     '2021-21-03-elva-test/2021-11-03-13-13-16_e2e_rec_elva_wide-v2.bag' \
