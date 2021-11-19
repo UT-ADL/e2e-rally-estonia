@@ -5,10 +5,8 @@ import pandas as pd
 from sklearn.neighbors import BallTree
 
 
-
 def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_rate_threshold=1.0,
                                   only_autonomous=True):
-
     model_steering = model_frames.steering_angle.to_numpy() / np.pi * 180
     true_steering = expert_frames.steering_angle.to_numpy() / np.pi * 180
 
@@ -75,13 +73,13 @@ def calculate_interventions(frames):
     frames['autonomous_next'] = frames.shift(-1)['autonomous']
     return len(frames[frames.autonomous & (frames.autonomous_next == False)])
 
-def read_frames(dataset_paths, modality):
+
+def read_frames(dataset_paths, modality="nvidia"):
     datasets = [pd.read_csv(dataset_path / f"{modality}_frames.csv") for dataset_path in dataset_paths]
     return pd.concat(datasets)
 
 
 if __name__ == "__main__":
-
     root_path = Path("/media/romet/data2/datasets/rally-estonia/dataset")
     expert_ds = [root_path / '2021-10-26-10-49-06_e2e_rec_ss20_elva',
                  root_path / '2021-10-26-11-08-59_e2e_rec_ss20_elva_back']
