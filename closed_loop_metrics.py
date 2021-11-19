@@ -1,19 +1,18 @@
-import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import BallTree
 
-from dataloading.nvidia import NvidiaDataset
 
 
-def calculate_closed_loop_metrics(model_dataset, expert_dataset, fps=30, failure_rate_threshold=1.0,
+def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_rate_threshold=1.0,
                                   only_autonomous=True):
-    model_steering = model_dataset.steering_angles_degrees()
-    true_steering = expert_dataset.steering_angles_degrees()
 
-    lat_errors = calculate_lateral_errors(model_dataset, expert_dataset, only_autonomous)
+    model_steering = model_frames.steering_angle.to_numpy() / np.pi * 180
+    true_steering = expert_frames.steering_angle.to_numpy() / np.pi * 180
+
+    lat_errors = calculate_lateral_errors(model_frames, expert_frames, only_autonomous)
     whiteness = calculate_whiteness(model_steering, fps)
     expert_whiteness = calculate_whiteness(true_steering, fps)
 
@@ -21,7 +20,7 @@ def calculate_closed_loop_metrics(model_dataset, expert_dataset, fps=30, failure
     mae = lat_errors.mean()
     rmse = np.sqrt((lat_errors ** 2).mean())
     failure_rate = len(lat_errors[lat_errors > failure_rate_threshold]) / float(len(lat_errors)) * 100
-    interventions = calculate_interventions(model_dataset)
+    interventions = calculate_interventions(model_frames)
 
     return {
         'mae': mae,
@@ -42,10 +41,10 @@ def calculate_whiteness(steering_angles, fps=30):
     return whiteness
 
 
-def calculate_lateral_errors(model_dataset, expert_dataset, only_autonomous=True):
-    model_trajectory_df = model_dataset.frames[["position_x", "position_y", "autonomous"]].rename(
+def calculate_lateral_errors(model_frames, expert_frames, only_autonomous=True):
+    model_trajectory_df = model_frames[["position_x", "position_y", "autonomous"]].rename(
         columns={"position_x": "X", "position_y": "Y"})
-    expert_trajectory_df = expert_dataset.frames[["position_x", "position_y", "autonomous"]].rename(
+    expert_trajectory_df = expert_frames[["position_x", "position_y", "autonomous"]].rename(
         columns={"position_x": "X", "position_y": "Y"})
 
     if only_autonomous:
@@ -72,33 +71,24 @@ def calculate_lateral_errors(model_dataset, expert_dataset, only_autonomous=True
     return lat_errors
 
 
-def calculate_interventions(driving_dataset):
-    frames = driving_dataset.frames
+def calculate_interventions(frames):
     frames['autonomous_next'] = frames.shift(-1)['autonomous']
     return len(frames[frames.autonomous & (frames.autonomous_next == False)])
 
+def read_frames(dataset_paths, modality):
+    datasets = [pd.read_csv(dataset_path / f"{modality}_frames.csv") for dataset_path in dataset_paths]
+    return pd.concat(datasets)
+
 
 if __name__ == "__main__":
-    # argparser = argparse.ArgumentParser()
-    #
-    # argparser.add_argument(
-    #     '--rootpath',
-    #     required=True,
-    #     help='Path to a dataset extracted from a bag file'
-    # )
-    #
-    # argparser.add_argument(
-    #     '--expert-dataset-folder',
-    #     default="/media/romet/data2/datasets/rally-estonia/dataset",
-    #     required=False,
-    #     help='Path to a dataset extracted from a bag file'
-    # )
 
     root_path = Path("/media/romet/data2/datasets/rally-estonia/dataset")
-    expert_ds = NvidiaDataset([root_path / '2021-10-26-10-49-06_e2e_rec_ss20_elva',
-                               root_path / '2021-10-26-11-08-59_e2e_rec_ss20_elva_back'])
+    expert_ds = [root_path / '2021-10-26-10-49-06_e2e_rec_ss20_elva',
+                 root_path / '2021-10-26-11-08-59_e2e_rec_ss20_elva_back']
+    expert_frames = read_frames(expert_ds, "nvidia")
 
-    model_ds = NvidiaDataset([root_path / '2021-11-03-12-53-38_e2e_rec_elva_back_autumn-v3',
-                              root_path / '2021-11-03-12-35-19_e2e_rec_elva_autumn-v3'])
+    model_ds = [root_path / '2021-11-03-12-53-38_e2e_rec_elva_back_autumn-v3',
+                root_path / '2021-11-03-12-35-19_e2e_rec_elva_autumn-v3']
+    model_frames = read_frames(model_ds, "nvidia")
 
-    print(calculate_closed_loop_metrics(model_ds, expert_ds))
+    print(calculate_closed_loop_metrics(model_frames, expert_frames))
