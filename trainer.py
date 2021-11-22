@@ -3,7 +3,9 @@ from pathlib import Path
 
 import numpy as np
 import onnx
+import pandas as pd
 import torch
+from sklearn.neighbors import BallTree
 from tqdm.auto import tqdm
 
 import wandb
@@ -12,7 +14,7 @@ from network import PilotNet
 
 class Trainer:
 
-    def __init__(self, model_name, target_name="steering_angle", wandb_logging=False):
+    def __init__(self, model_name=None, target_name="steering_angle", wandb_logging=False):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.target_name = target_name
         self.wandb_logging = wandb_logging
@@ -88,9 +90,20 @@ class Trainer:
 
         data = iter(valid_loader).next()
         sample_inputs = data['image'].to(self.device)
-        torch.onnx.export(best_model, sample_inputs, f"{self.save_dir}/best.onnx")
 
+        torch.onnx.export(best_model, sample_inputs, f"{self.save_dir}/best.onnx")
         onnx.checker.check_model(f"{self.save_dir}/best.onnx")
+        if self.wandb_logging:
+            wandb.save(f"{self.save_dir}/best.onnx")
+
+        last_model = PilotNet()
+        last_model.load_state_dict(torch.load(f"{self.save_dir}/last.pt"))
+        last_model.to(self.device)
+
+        torch.onnx.export(last_model, sample_inputs, f"{self.save_dir}/last.onnx")
+        onnx.checker.check_model(f"{self.save_dir}/last.onnx")
+        if self.wandb_logging:
+            wandb.save(f"{self.save_dir}/last.onnx")
 
     def train_epoch(self, model, loader, optimizer, criterion, progress_bar):
         running_loss = 0.0
@@ -112,7 +125,7 @@ class Trainer:
             running_loss += loss.item()
 
             progress_bar.update(1)
-            progress_bar.set_description(f'train loss: {(running_loss / ( i +1)):.4f}')
+            progress_bar.set_description(f'train loss: {(running_loss / (i + 1)):.4f}')
 
         return running_loss / len(loader)
 
@@ -129,7 +142,6 @@ class Trainer:
                 progress_bar.update(1)
 
         return all_predictions
-
 
     def evaluate(self, model, iterator, criterion):
         epoch_loss = 0.0
@@ -171,9 +183,68 @@ class Trainer:
         expert_whiteness = self.calculate_whiteness(true_degrees, fps)
 
         return {
-            'MAE': mae,
-            'RMSE': rmse,
-            'Max': max,
-            'Whiteness': whiteness,
-            'Expert whiteness': expert_whiteness
+            'mae': mae,
+            'rmse': rmse,
+            'max': max,
+            'whiteness': whiteness,
+            'expert_whiteness': expert_whiteness
         }
+
+    def calculate_closed_loop_metrics(self, model_dataset, expert_dataset, fps=30, failure_rate_threshold=1.0,
+                                      only_autonomous=True):
+        model_steering = model_dataset.steering_angles_degrees()
+        true_steering = expert_dataset.steering_angles_degrees()
+
+        lat_errors = self.calculate_lateral_errors(model_dataset, expert_dataset, only_autonomous)
+        whiteness = self.calculate_whiteness(model_steering, fps)
+        expert_whiteness = self.calculate_whiteness(true_steering, fps)
+
+        max = lat_errors.max()
+        mae = lat_errors.mean()
+        rmse = np.sqrt((lat_errors ** 2).mean())
+        failure_rate = len(lat_errors[lat_errors > failure_rate_threshold]) / float(len(lat_errors)) * 100
+        interventions = self.calculate_interventions(model_dataset)
+
+        return {
+            'mae': mae,
+            'rmse': rmse,
+            'max': max,
+            'failure_rate': failure_rate,
+            'interventions': interventions,
+            'whiteness': whiteness,
+            'expert_whiteness': expert_whiteness,
+        }
+
+    def calculate_lateral_errors(self, model_dataset, expert_dataset, only_autonomous):
+        model_trajectory_df = model_dataset.frames[["position_x", "position_y", "autonomous"]].rename(
+            columns={"position_x": "X", "position_y": "Y"})
+        expert_trajectory_df = expert_dataset.frames[["position_x", "position_y", "autonomous"]].rename(
+            columns={"position_x": "X", "position_y": "Y"})
+
+        if only_autonomous:
+            model_trajectory_df = model_trajectory_df[model_trajectory_df.autonomous].reset_index(drop=True)
+
+        tree = BallTree(expert_trajectory_df.values)
+        inds, dists = tree.query_radius(model_trajectory_df.values, r=2, sort_results=True, return_distance=True)
+        closest_l = []
+        for i, ind in enumerate(inds):
+            if len(ind) >= 2:
+                closest = pd.DataFrame({
+                    'X1': [expert_trajectory_df.iloc[ind[0]].X],
+                    'Y1': [expert_trajectory_df.iloc[ind[0]].Y],
+                    'X2': [expert_trajectory_df.iloc[ind[1]].X],
+                    'Y2': [expert_trajectory_df.iloc[ind[1]].Y]},
+                    index=[i])
+                closest_l.append(closest)
+        closest_df = pd.concat(closest_l)
+        f = model_trajectory_df.join(closest_df)
+        lat_errors = abs((f.X2 - f.X1) * (f.Y1 - f.Y) - (f.X1 - f.X) * (f.Y2 - f.Y1)) / np.sqrt(
+            (f.X2 - f.X1) ** 2 + (f.Y2 - f.Y1) ** 2)
+        # lat_errors.dropna(inplace=True)  # Why na-s?
+
+        return lat_errors
+
+    def calculate_interventions(self, driving_dataset):
+        frames = driving_dataset.frames
+        frames['autonomous_next'] = frames.shift(-1)['autonomous']
+        return len(frames[frames.autonomous & (frames.autonomous_next == False)])
