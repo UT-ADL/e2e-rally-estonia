@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from collections import defaultdict
 
 from torch.utils.data import Dataset
 import torchvision
@@ -43,6 +42,24 @@ class NvidiaCropWide(object):
 
         data["image"] = cropped
         return data
+
+class CropViT(object):
+    def __call__(self, data):
+        xmin = 540
+        xmax = 1260
+
+        ymin = 244
+        ymax = 964
+
+        scale = 0.312
+
+        height = ymax - ymin
+        width = xmax - xmin
+        cropped = transforms.functional.resized_crop(data["image"], ymin, xmin, height, width,
+                                                     (int(scale * height), int(scale * width)))
+        data["image"] = cropped
+        return data
+
 
 class NvidiaSideCameraZoom(object):
 
@@ -162,7 +179,7 @@ class NvidiaDataset(Dataset):
 
 
 class NvidiaTrainDataset(NvidiaDataset):
-    def __init__(self, root_path, filter_turns=False):
+    def __init__(self, root_path, crop=NvidiaCropWide(), filter_turns=False):
         train_paths = [
             root_path / "2021-05-20-12-36-10_e2e_sulaoja_20_30",
             root_path / "2021-05-20-12-43-17_e2e_sulaoja_20_30",
@@ -212,12 +229,13 @@ class NvidiaTrainDataset(NvidiaDataset):
             root_path / "2021-10-25-17-06-34_e2e_rec_ss2_arula_back"
         ]
 
-        tr = transforms.Compose([NvidiaCropWide(), Normalize()])
+        tr = transforms.Compose([crop, Normalize()])
 
         super().__init__(train_paths, tr, filter_turns=filter_turns)
 
+
 class NvidiaValidationDataset(NvidiaDataset):
-    def __init__(self, root_path, filter_turns=False):
+    def __init__(self, root_path, crop=NvidiaCropWide(), filter_turns=False):
         valid_paths = [
             root_path / "2021-05-28-15-19-48_e2e_sulaoja_20_30",
             root_path / "2021-06-07-14-20-07_e2e_rec_ss6",
@@ -233,7 +251,7 @@ class NvidiaValidationDataset(NvidiaDataset):
 
         ]
 
-        tr = transforms.Compose([NvidiaCropWide(), Normalize()])
+        tr = transforms.Compose([crop, Normalize()])
         super().__init__(valid_paths, tr, filter_turns=filter_turns)
 
 class NvidiaSpringTrainDataset(NvidiaDataset):
