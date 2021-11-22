@@ -13,6 +13,8 @@ To extract bags, local ROS must be installed, which is easiest to do using:
 conda create -n ros ros-noetic-desktop pandas -c conda-forge -c robostack && conda activate ros
 ```
 
+See more at https://medium.com/robostack/cross-platform-conda-packages-for-ros-fa1974fd1de3
+
 ## Extracting
 
 Dataset can be extracted from bags running jupyter notebook `data_extract/extract_images.ipynb` or using 

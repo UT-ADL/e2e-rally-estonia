@@ -31,8 +31,11 @@ conda install scikit-image
 conda install jupyter pandas matplotlib tqdm
 conda install -c conda-forge wandb
 
+Download tensorrt from nvidia web site.
+sudo dpkg -i nv-tensorrt-repo-${os}-${tag}_1-1_amd64.deb
 sudo apt-key add /var/nv-tensorrt-repo-${os}-${tag}/7fa2af80.pub
-sudo pip install nvidia-tensorrt==7.2.*
+sudo apt-get update
+sudo apt-get install tensorrt
 
 
 Alternative approach is to recreate environment from exported `environment.yml`:
