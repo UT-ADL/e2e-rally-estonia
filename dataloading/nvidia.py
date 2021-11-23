@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 import torchvision
 from torchvision import transforms
 
+
 class NvidiaResizeAndCrop(object):
     def __call__(self, data):
         xmin = 186
@@ -22,6 +23,7 @@ class NvidiaResizeAndCrop(object):
         data["image"] = cropped
         return data
 
+
 class NvidiaCropWide(object):
     def __init__(self, x_delta=0):
         self.x_delta = x_delta
@@ -37,11 +39,12 @@ class NvidiaCropWide(object):
 
         height = ymax - ymin
         width = xmax - xmin
-        cropped = transforms.functional.resized_crop(data["image"], ymin, xmin+self.x_delta, height, width,
-                                                     (int(scale*height), int(scale*width)))
+        cropped = transforms.functional.resized_crop(data["image"], ymin, xmin + self.x_delta, height, width,
+                                                     (int(scale * height), int(scale * width)))
 
         data["image"] = cropped
         return data
+
 
 class CropViT(object):
     def __call__(self, data):
@@ -70,11 +73,11 @@ class NvidiaSideCameraZoom(object):
         width = 1920
         height = 1208
 
-        xmin = int(self.zoom_ratio*width)
-        ymin = int(self.zoom_ratio*height)
+        xmin = int(self.zoom_ratio * width)
+        ymin = int(self.zoom_ratio * height)
 
-        scaled_width = width - (2*xmin)
-        scaled_height = height - (2*ymin)
+        scaled_width = width - (2 * xmin)
+        scaled_height = height - (2 * ymin)
 
         cropped = transforms.functional.resized_crop(data["image"], ymin, xmin, scaled_height, scaled_width,
                                                      (height, width))
@@ -82,17 +85,18 @@ class NvidiaSideCameraZoom(object):
         data["image"] = cropped
         return data
 
+
 class Normalize(object):
     def __call__(self, data, transform=None):
-        #normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        # normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         image = data["image"]
         image = image / 255
-        #data["image"] = normalize(image)
+        # data["image"] = normalize(image)
         data["image"] = image
         return data
 
-class NvidiaDataset(Dataset):
 
+class NvidiaDataset(Dataset):
     N_WAYPOINTS = 5
     CAP_WAYPOINTS = 10
 
@@ -143,7 +147,7 @@ class NvidiaDataset(Dataset):
         # temp hack
         if "autonomous" not in frames_df.columns:
             frames_df["autonomous"] = False
-        #frames_df["autonomous"] = False
+        # frames_df["autonomous"] = False
 
         frames_df = frames_df[frames_df['steering_angle'].notna()]  # TODO: one steering angle is NaN, why?
         frames_df = frames_df[frames_df['vehicle_speed'].notna()]
@@ -248,11 +252,11 @@ class NvidiaValidationDataset(NvidiaDataset):
             root_path / "2021-10-20-15-11-29_e2e_rec_vastse_ss13_17_back",
             root_path / "2021-10-11-14-50-59_e2e_rec_vahi",
             root_path / "2021-10-14-13-08-51_e2e_rec_vahi_backwards"
-
         ]
 
         tr = transforms.Compose([crop, Normalize()])
         super().__init__(valid_paths, tr, filter_turns=filter_turns)
+
 
 class NvidiaSpringTrainDataset(NvidiaDataset):
     def __init__(self, root_path, filter_turns=False):
@@ -288,4 +292,37 @@ class NvidiaSpringTrainDataset(NvidiaDataset):
 
         super().__init__(train_paths, tr, filter_turns=filter_turns)
 
+class NvidiaAutumnTrainDataset(NvidiaDataset):
+    def __init__(self, root_path, filter_turns=False):
+        train_paths = [
+            root_path / "2021-09-24-11-19-25_e2e_rec_ss10",
+            root_path / "2021-09-24-11-40-24_e2e_rec_ss10_2",
+            root_path / "2021-09-24-12-02-32_e2e_rec_ss10_3",
+            root_path / "2021-09-24-12-21-20_e2e_rec_ss10_backwards",
+            root_path / "2021-09-24-13-39-38_e2e_rec_ss11",
+            root_path / "2021-09-30-13-57-00_e2e_rec_ss14",
+            root_path / "2021-09-30-15-03-37_e2e_ss14_from_half_way",
+            root_path / "2021-09-30-15-20-14_e2e_ss14_backwards",
+            root_path / "2021-09-30-15-56-59_e2e_ss14_attempt_2",
+            root_path / "2021-10-07-11-05-13_e2e_rec_ss3",
+            root_path / "2021-10-07-11-44-52_e2e_rec_ss3_backwards",
+            root_path / "2021-10-07-12-54-17_e2e_rec_ss4",
+            root_path / "2021-10-07-13-22-35_e2e_rec_ss4_backwards",
+            root_path / "2021-10-11-16-06-44_e2e_rec_ss2",
+            root_path / "2021-10-11-17-10-23_e2e_rec_last_part",
+            root_path / "2021-10-11-17-14-40_e2e_rec_backwards",
+            root_path / "2021-10-11-17-20-12_e2e_rec_backwards",
+            root_path / "2021-10-20-14-55-47_e2e_rec_vastse_ss13_17",
+            root_path / "2021-10-20-13-57-51_e2e_rec_neeruti_ss19_22",
+            root_path / "2021-10-20-14-15-07_e2e_rec_neeruti_ss19_22_back",
+            root_path / "2021-10-25-17-31-48_e2e_rec_ss2_arula",
+            root_path / "2021-10-25-17-06-34_e2e_rec_ss2_arula_back",
+            root_path / "2021-10-26-10-49-06_e2e_rec_ss20_elva",
+            root_path / "2021-10-26-11-08-59_e2e_rec_ss20_elva_back",
+            root_path / "2021-09-24-14-03-45_e2e_rec_ss11_backwards",
+            root_path / "2021-10-20-15-11-29_e2e_rec_vastse_ss13_17_back",
+        ]
 
+        tr = transforms.Compose([NvidiaCropWide(), Normalize()])
+
+        super().__init__(train_paths, tr, filter_turns=filter_turns)

@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import torch
 
 import torchvision
 from torchvision import transforms
@@ -29,10 +30,19 @@ class OusterNormalize(object):
 
 
 class OusterDataset(Dataset):
-    def __init__(self, dataset_paths, transform=None, filter_turns=False):
+    CHANNEL_MAP = {
+        "ambience": 0,
+        "intensity": 1,
+        "range": 2
+    }
+
+    def __init__(self, dataset_paths, transform=None, filter_turns=False, channel=None):
 
         self.dataset_paths = dataset_paths
         self.transform = transform
+
+        print(f"Using only lidar channel {channel}")
+        self.channel = channel
 
         datasets = [self.read_dataset(dataset_path) for dataset_path in dataset_paths]
         self.frames = pd.concat(datasets)
@@ -43,7 +53,11 @@ class OusterDataset(Dataset):
 
     def __getitem__(self, idx):
         frame = self.frames.iloc[idx]
+
         image = torchvision.io.read_image(frame["image_path"])
+        if self.channel:
+            channel_idx = self.CHANNEL_MAP[self.channel]
+            image = torch.unsqueeze(image[channel_idx], dim=0)
 
         data = {
             'image': image,
@@ -82,7 +96,7 @@ class OusterDataset(Dataset):
 
 
 class OusterTrainDataset(OusterDataset):
-    def __init__(self, root_path, filter_turns=False):
+    def __init__(self, root_path, filter_turns=False, channel=None):
         train_paths = [
             root_path / "2021-05-20-12-36-10_e2e_sulaoja_20_30",
             root_path / "2021-05-20-12-43-17_e2e_sulaoja_20_30",
@@ -134,10 +148,10 @@ class OusterTrainDataset(OusterDataset):
 
         tr = transforms.Compose([OusterCrop(), OusterNormalize()])
 
-        super().__init__(train_paths, tr, filter_turns=filter_turns)
+        super().__init__(train_paths, tr, filter_turns=filter_turns, channel=channel)
 
 class OusterValidationDataset(OusterDataset):
-    def __init__(self, root_path, filter_turns=False):
+    def __init__(self, root_path, filter_turns=False, channel=None):
         valid_paths = [
             root_path / "2021-05-28-15-19-48_e2e_sulaoja_20_30",
             root_path / "2021-06-07-14-20-07_e2e_rec_ss6",
@@ -154,4 +168,4 @@ class OusterValidationDataset(OusterDataset):
         ]
 
         tr = transforms.Compose([OusterCrop(), OusterNormalize()])
-        super().__init__(valid_paths, tr, filter_turns=filter_turns)
+        super().__init__(valid_paths, tr, filter_turns=filter_turns, channel=channel)

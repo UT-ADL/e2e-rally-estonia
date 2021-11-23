@@ -3,11 +3,11 @@ import torch.nn as nn
 
 class PilotNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, n_input_channels=3):
         super(PilotNet, self).__init__()
 
         self.features = nn.Sequential(
-            nn.Conv2d(3, 24, 5, stride=2),
+            nn.Conv2d(n_input_channels, 24, 5, stride=2),
             nn.BatchNorm2d(24),
             nn.LeakyReLU(),
             nn.Conv2d(24, 36, 5, stride=2),

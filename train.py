@@ -12,13 +12,17 @@ from network import PilotNet
 from trainer import Trainer
 
 
-def train_model(model_name, dataset_folder, input_modality, wandb_logging, max_epochs, patience, learning_rate,
-                weight_decay,
-                filter_blinker_turns):
-    train_loader, valid_loader = load_data(dataset_folder, input_modality, filter_blinker_turns)
+def train_model(model_name, dataset_folder, input_modality, lidar_channel,
+                wandb_logging, max_epochs, patience,
+                learning_rate, weight_decay, filter_blinker_turns):
+    train_loader, valid_loader = load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turns)
 
-    print(f"Training model {model_name}")
-    model = PilotNet()
+    print(f"Training model {model_name}, wandb_logging={wandb_logging}")
+    if lidar_channel:
+        model = PilotNet(n_input_channels=1)
+    else:
+        model = PilotNet(n_input_channels=3)
+
     criterion = nn.L1Loss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.999),
                                   eps=1e-08, weight_decay=weight_decay, amsgrad=False)
@@ -31,15 +35,15 @@ def train_model(model_name, dataset_folder, input_modality, wandb_logging, max_e
     trainer.train(model, train_loader, valid_loader, optimizer, criterion, max_epochs, patience)
 
 
-def load_data(dataset_folder, input_modality, filter_blinker_turns):
-    print(f"Reading {input_modality} data from {dataset_folder}")
+def load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turns):
+    print(f"Reading {input_modality} data from {dataset_folder}, lidar_channel={lidar_channel}, filter_blinker_turns={filter_blinker_turns}")
     dataset_path = Path(dataset_folder)
     if input_modality == "nvidia-camera":
         trainset = NvidiaTrainDataset(dataset_path, filter_turns=filter_blinker_turns)
         validset = NvidiaValidationDataset(dataset_path, filter_turns=filter_blinker_turns)
     elif input_modality == "ouster-lidar":
-        trainset = OusterTrainDataset(dataset_path, filter_turns=filter_blinker_turns)
-        validset = OusterValidationDataset(dataset_path, filter_turns=filter_blinker_turns)
+        trainset = OusterTrainDataset(dataset_path, filter_turns=filter_blinker_turns, channel=lidar_channel)
+        validset = OusterValidationDataset(dataset_path, filter_turns=filter_blinker_turns, channel=lidar_channel)
     else:
         print("Uknown input modality")
         sys.exit()
@@ -72,6 +76,14 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
+        '--lidar-channel',
+        required=False,
+        choices=['ambience', 'intensity', 'range'],
+        help="Lidar channels to use for training. Combined image is used if not provided. "
+             "Only applies to 'ouster-lidar' modality."
+    )
+
+    argparser.add_argument(
         '--dataset_folder',
         default="/media/romet/data2/datasets/rally-estonia/dataset",
         help='Root path to the dataset.'
@@ -80,6 +92,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '--wandb-logging',
         default=False,
+        action='store_true',
         help='Log training information using W&B.'
     )
 
@@ -110,12 +123,14 @@ if __name__ == "__main__":
     argparser.add_argument(
         '--filter-blinker-turns',
         default=False,
+        action='store_true',
         help='When true, turns with blinker (left or right) on will be removed from training and validation data.'
     )
 
     args = argparser.parse_args()
     model_name = args.model_name
     input_modality = args.input_modality
+    lidar_channel = args.lidar_channel
     dataset_folder = args.dataset_folder
     wandb_logging = args.wandb_logging
     max_epochs = args.max_epochs
@@ -124,6 +139,6 @@ if __name__ == "__main__":
     weight_decay = args.weight_decay
     filter_blinker_turns = args.filter_blinker_turns
 
-    train_model(model_name, dataset_folder, input_modality, wandb_logging, max_epochs, patience, learning_rate,
+    train_model(model_name, dataset_folder, input_modality, lidar_channel, wandb_logging, max_epochs, patience, learning_rate,
                 weight_decay,
                 filter_blinker_turns)

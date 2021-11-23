@@ -27,12 +27,6 @@ class Trainer:
     def force_cpu(self):
         self.device = 'cpu'
 
-    def load_model(self, model_path):
-        model = PilotNet()
-        model.load_state_dict(torch.load(model_path, map_location=torch.device(self.device)))
-        model.to(self.device)
-        return model
-
     def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch, patience=10):
         if self.wandb_logging:
             wandb.init(project="lanefollowing-ut-vahi")
@@ -67,8 +61,9 @@ class Trainer:
 
         self.save_models(model, valid_loader)
 
-        best_model = self.load_model(self.save_dir / "best.pt")
-        metrics = self.calculate_open_loop_metrics(best_model, valid_loader, fps=30)
+        model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
+        model.to(self.device)
+        metrics = self.calculate_open_loop_metrics(model, valid_loader, fps=30)
         print(metrics)
         if self.wandb_logging:
             wandb.log(metrics)
@@ -81,26 +76,24 @@ class Trainer:
             wandb.save(f"{self.save_dir}/last.pt")
             wandb.save(f"{self.save_dir}/best.pt")
 
-        self.save_onnx(valid_loader)
+        self.save_onnx(model, valid_loader)
 
-    def save_onnx(self, valid_loader):
-        best_model = PilotNet()
-        best_model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
-        best_model.to(self.device)
+    def save_onnx(self, model, valid_loader):
+        model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
+        model.to(self.device)
 
         data = iter(valid_loader).next()
         sample_inputs = data['image'].to(self.device)
 
-        torch.onnx.export(best_model, sample_inputs, f"{self.save_dir}/best.onnx")
+        torch.onnx.export(model, sample_inputs, f"{self.save_dir}/best.onnx")
         onnx.checker.check_model(f"{self.save_dir}/best.onnx")
         if self.wandb_logging:
             wandb.save(f"{self.save_dir}/best.onnx")
 
-        last_model = PilotNet()
-        last_model.load_state_dict(torch.load(f"{self.save_dir}/last.pt"))
-        last_model.to(self.device)
+        model.load_state_dict(torch.load(f"{self.save_dir}/last.pt"))
+        model.to(self.device)
 
-        torch.onnx.export(last_model, sample_inputs, f"{self.save_dir}/last.onnx")
+        torch.onnx.export(model, sample_inputs, f"{self.save_dir}/last.onnx")
         onnx.checker.check_model(f"{self.save_dir}/last.onnx")
         if self.wandb_logging:
             wandb.save(f"{self.save_dir}/last.onnx")
