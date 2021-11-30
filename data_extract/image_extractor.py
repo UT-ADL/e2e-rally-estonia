@@ -15,9 +15,11 @@ from tf.transformations import euler_from_quaternion
 
 class NvidiaDriveImporter:
 
-    def __init__(self, bag_files, extract_dir):
+    def __init__(self, bag_files, extract_dir, resize_camera_images, extract_side_cameras):
         self.bag_files = bag_files
         self.extract_dir = extract_dir
+        self.resize_camera_image = resize_camera_images
+        self.extract_side_cameras = extract_side_cameras
 
         self.steer_topic = '/pacmod/parsed_tx/steer_rpt'
         self.speed_topic = '/pacmod/parsed_tx/vehicle_speed_rpt'
@@ -39,9 +41,10 @@ class NvidiaDriveImporter:
         front_wide_camera_topic = "/interfacea/link2/image/compressed"
         # front 60'
         # self.front_narrow_camera_topic = "/interfacea/link3/image/compressed"
-        self.nvidia_topics = [left_camera_topic_old, left_camera_topic,
-                              right_camera_topic_old, right_camera_topic,
-                              front_wide_camera_topic_old, front_wide_camera_topic]
+        self.nvidia_topics = [front_wide_camera_topic_old, front_wide_camera_topic]
+        if extract_side_cameras:
+            self.nvidia_topics = self.nvidia_topics + [left_camera_topic_old, left_camera_topic,
+                                                       right_camera_topic_old, right_camera_topic]
 
         # OUSTER images
         self.lidar_amb_c = '/lidar_center/ambient_image'
@@ -59,6 +62,13 @@ class NvidiaDriveImporter:
             front_wide_camera_topic_old: "front_wide",
             front_wide_camera_topic: "front_wide",
         }
+
+        # Camera image dimensions
+        height = 1208
+        width = 1920
+        self.scale = 0.2
+        self.scaled_width = int(self.scale * width)
+        self.scaled_height = int(self.scale * height)
 
     def import_bags(self):
         for bag_file in self.bag_files:
@@ -147,9 +157,11 @@ class NvidiaDriveImporter:
                     camera_dict["timestamp"].append(msg_timestamp)
                     camera_dict["autonomous"].append(autonomous)
                     camera_dict["camera"].append(camera_name)
-                    image_name = f"{msg_timestamp}.jpg"
+                    image_name = f"{msg_timestamp}.png"
                     camera_dict["filename"].append(str(Path(output_folder.stem) / image_name))
                     cv_img = bridge.compressed_imgmsg_to_cv2(msg)
+                    if self.resize_camera_image:
+                        cv_img = self.resize(cv_img)
                     cv2.imwrite(str(output_folder / image_name), cv_img)
                     progress.update(1)
                 elif topic in self.lidar_topics:
@@ -161,7 +173,7 @@ class NvidiaDriveImporter:
                                 output_folder = root_folder / camera_name
                                 lidar_dict["timestamp"].append(oi.ts)
                                 lidar_dict["autonomous"].append(autonomous)
-                                image_name = f"{oi.ts}.jpg"
+                                image_name = f"{oi.ts}.png"
                                 lidar_dict["lidar_filename"].append(str(Path(output_folder.stem) / image_name))
                                 cv2.imwrite(str(output_folder / image_name), lidar_image)
                         oi = OusterImage(msg_timestamp)
@@ -183,8 +195,6 @@ class NvidiaDriveImporter:
         self.create_timestamp_index(camera_df)
 
         front_wide_camera_df = self.create_camera_df(camera_df, "front_wide")
-        left_camera_df = self.create_camera_df(camera_df, "left").drop(columns="autonomous")
-        right_camera_df = self.create_camera_df(camera_df, "right").drop(columns="autonomous")
 
         steering_df = pd.DataFrame(data=steering_dict, columns=["timestamp", "steering_angle"])
         self.create_timestamp_index(steering_df)
@@ -200,10 +210,16 @@ class NvidiaDriveImporter:
                                                                         "roll", "pitch", "yaw"])
         self.create_timestamp_index(current_pose_df)
 
+        dataframes = [front_wide_camera_df]
+        if self.extract_side_cameras:
+            left_camera_df = self.create_camera_df(camera_df, "left").drop(columns="autonomous")
+            right_camera_df = self.create_camera_df(camera_df, "right").drop(columns="autonomous")
+            dataframes += [left_camera_df, right_camera_df]
+        dataframes += [steering_df, speed_df, turn_df, current_pose_df]
+
         merged = functools.reduce(lambda left, right:
                                   pd.merge(left, right, how='outer', left_index=True, right_index=True),
-                                  [front_wide_camera_df, left_camera_df, right_camera_df, steering_df, speed_df,
-                                   turn_df, current_pose_df])
+                                  dataframes)
         merged.interpolate(method='time', inplace=True)
 
         filtered_df = merged.loc[front_wide_camera_df.index]
@@ -230,6 +246,9 @@ class NvidiaDriveImporter:
         camera_df = camera_df.rename(columns={"filename": f"{camera_name}_filename"})
         camera_df.drop(["camera"], 1, inplace=True)
         return camera_df
+    
+    def resize(self, img):
+        return cv2.resize(img, dsize=(self.scaled_width, self.scaled_height), interpolation=cv2.INTER_LINEAR)
 
 
 class OusterImage(object):
@@ -261,10 +280,21 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--bag-file", type=str)
     parser.add_argument("--extract-dir", type=str)
+
+    parser.add_argument("--resize-camera-images",
+                        default=False,
+                        action='store_true',
+                        help='Resize camera image for smaller size')
+
+    parser.add_argument("--extract-side-cameras",
+                        default=False,
+                        action='store_true',
+                        help='Extract left and right side camera images')
+
     args = parser.parse_args()
 
     bags = [
         args.bag_file
     ]
-    importer = NvidiaDriveImporter(bags, args.extract_dir)
+    importer = NvidiaDriveImporter(bags, args.extract_dir, args.resize_camera_images, args.extract_side_cameras)
     importer.import_bags()

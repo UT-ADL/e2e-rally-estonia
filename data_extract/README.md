@@ -10,22 +10,20 @@ about the bag files can be found in [spreadsheet](https://docs.google.com/spread
 To extract bags, local ROS must be installed, which is easiest to do using:
 
 ```bash
-conda create -n ros ros-noetic-desktop pandas -c conda-forge -c robostack && conda activate ros
+conda create -n ros ros-noetic-desktop pandas tqdm jupyter -c conda-forge -c robostack && conda activate ros
 ```
 
 See more at https://medium.com/robostack/cross-platform-conda-packages-for-ros-fa1974fd1de3
 
 ## Extracting
 
-Dataset can be extracted from bags running jupyter notebook `data_extract/extract_images.ipynb` or using 
-`data_extract/extract.sh` bash script: 
+Dataset can be extracted from bags running `data_extract/extract.sh` bash script: 
 
 ```bash
 cd data_extract
-./extract.sh datasets/ut/nvidia-data/2021-06-21-14-31-56_e2e_vahi_back_nvidia_wide-v2_11.bag
+python ./image_extractor.py --bag-file=/media/romet/data2/datasets/rally-estonia/bags/2021-05-28-15-19-48_e2e_sulaoja_20_30.bag --extract-dir=/media/romet/data2/datasets/rally-estonia/test-dataset
 ```
-
-Dataset is extracted into the same directory where the bag file resides.
+Check the script for additional arguments.
 
 ## HPC
 
