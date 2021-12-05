@@ -28,7 +28,6 @@ BAGS=(
     '2021-06-10-15-03-16_e2e_ss3_backwards.bag' \
     '2021-06-14-11-08-19_e2e_rec_ss14.bag' \
     '2021-06-14-11-22-05_e2e_rec_ss14.bag' \
-    '2021-06-14-11-22-05_e2e_rec_ss14.bag' \
     '2021-06-14-11-43-48_e2e_rec_ss14_backwards.bag' \
     '2021-09-24-11-19-25_e2e_rec_ss10.bag' \
     '2021-09-24-11-40-24_e2e_rec_ss10_2.bag' \
@@ -51,7 +50,7 @@ BAGS=(
     '2021-10-20-13-57-51_e2e_rec_neeruti_ss19_22.bag' \
     '2021-10-20-14-15-07_e2e_rec_neeruti_ss19_22_back.bag' \
     '2021-10-25-17-31-48_e2e_rec_ss2_arula.bag' \
-    '2021-10-25-17-06-34_e2e_rec_ss2_arula_bac.bag' \
+    '2021-10-25-17-06-34_e2e_rec_ss2_arula_back.bag' \
     '2021-05-28-15-19-48_e2e_sulaoja_20_30.bag' \
     '2021-06-07-14-20-07_e2e_rec_ss6.bag' \
     '2021-06-07-14-06-31_e2e_rec_ss6.bag' \
