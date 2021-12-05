@@ -31,9 +31,9 @@ class OusterNormalize(object):
 
 class OusterDataset(Dataset):
     CHANNEL_MAP = {
-        "ambience": 0,
+        "ambience": 2,
         "intensity": 1,
-        "range": 2
+        "range": 0
     }
 
     def __init__(self, dataset_paths, transform=None, filter_turns=False, channel=None):
@@ -119,7 +119,6 @@ class OusterTrainDataset(OusterDataset):
             root_path / "2021-06-10-14-44-24_e2e_ss3_backwards",
             root_path / "2021-06-10-15-03-16_e2e_ss3_backwards",
             root_path / "2021-06-14-11-08-19_e2e_rec_ss14",
-            root_path / "2021-06-14-11-22-05_e2e_rec_ss14",
             root_path / "2021-06-14-11-22-05_e2e_rec_ss14",
             root_path / "2021-06-14-11-43-48_e2e_rec_ss14_backwards",
             root_path / "2021-09-24-11-19-25_e2e_rec_ss10",
