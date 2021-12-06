@@ -1,4 +1,5 @@
 import argparse
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,7 @@ def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_r
     true_steering = expert_frames.steering_angle.to_numpy() / np.pi * 180
 
     lat_errors = calculate_lateral_errors(model_frames, expert_frames, only_autonomous)
+
     whiteness = calculate_whiteness(model_steering, fps)
     expert_whiteness = calculate_whiteness(true_steering, fps)
 
@@ -94,8 +96,8 @@ def calculate_interventions(frames):
     return len(frames[frames.autonomous & (frames.autonomous_next == False)])
 
 
-def read_frames(dataset_paths, modality="nvidia"):
-    datasets = [pd.read_csv(dataset_path / f"{modality}_frames.csv") for dataset_path in dataset_paths]
+def read_frames(dataset_paths, filename):
+    datasets = [pd.read_csv(dataset_path / filename) for dataset_path in dataset_paths]
     return pd.concat(datasets)
 
 
@@ -116,17 +118,28 @@ if __name__ == "__main__":
                         default=[],
                         help='Datasets used to calculate metrics for.')
     parser.add_argument('--input-modality',
-                        default='nvidia',
+                        choices=['nvidia-camera', 'ouster-lidar'],
+                        default='nvidia-camera',
                         help='Input modality used for driving')
 
     args = parser.parse_args()
 
+    if args.input_modality == "nvidia-camera":
+        frames_filename = "nvidia_frames.csv"
+        fps = 30
+    elif args.input_modality == "ouster-lidar":
+        frames_filename = "lidar_frames.csv"
+        fps = 10
+    else:
+        print("Uknown input modality")
+        sys.exit()
+
     root_path = Path(args.root_path)
 
     expert_ds = [root_path / dataset_path for dataset_path in args.expert_datasets]
-    expert_frames = read_frames(expert_ds, args.input_modality)
+    expert_frames = read_frames(expert_ds, frames_filename)
 
     drive_ds = [root_path / dataset_path for dataset_path in args.drive_datasets]
-    model_frames = read_frames(drive_ds, args.input_modality)
+    model_frames = read_frames(drive_ds, frames_filename)
 
-    print(calculate_closed_loop_metrics(model_frames, expert_frames))
+    print(calculate_closed_loop_metrics(model_frames, expert_frames, fps=fps))
