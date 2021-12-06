@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -30,6 +31,25 @@ def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_r
         'expert_whiteness': expert_whiteness,
     }
 
+def calculate_open_loop_metrics(predicted_steering, true_steering, fps):
+    predicted_degrees = np.array(predicted_steering) / np.pi * 180
+    true_degrees = true_steering / np.pi * 180
+    errors = np.abs(true_degrees - predicted_degrees)
+    mae = errors.mean()
+    rmse = np.sqrt((errors ** 2).mean())
+    max = errors.max()
+
+    whiteness = calculate_whiteness(predicted_degrees, fps)
+    expert_whiteness = calculate_whiteness(true_degrees, fps)
+
+    return {
+        'mae': mae,
+        'rmse': rmse,
+        'max': max,
+        'whiteness': whiteness,
+        'expert_whiteness': expert_whiteness
+    }
+
 
 def calculate_whiteness(steering_angles, fps=30):
     current_angles = steering_angles[:-1]
@@ -40,6 +60,8 @@ def calculate_whiteness(steering_angles, fps=30):
 
 
 def calculate_lateral_errors(model_frames, expert_frames, only_autonomous=True):
+    print(model_frames)
+    print(expert_frames)
     model_trajectory_df = model_frames[["position_x", "position_y", "autonomous"]].rename(
         columns={"position_x": "X", "position_y": "Y"})
     expert_trajectory_df = expert_frames[["position_x", "position_y", "autonomous"]].rename(
@@ -80,13 +102,33 @@ def read_frames(dataset_paths, modality="nvidia"):
 
 
 if __name__ == "__main__":
-    root_path = Path("/media/romet/data2/datasets/rally-estonia/dataset")
-    expert_ds = [root_path / '2021-10-26-10-49-06_e2e_rec_ss20_elva',
-                 root_path / '2021-10-26-11-08-59_e2e_rec_ss20_elva_back']
-    expert_frames = read_frames(expert_ds, "nvidia")
+    parser = argparse.ArgumentParser()
 
-    model_ds = [root_path / '2021-11-03-12-53-38_e2e_rec_elva_back_autumn-v3',
-                root_path / '2021-11-03-12-35-19_e2e_rec_elva_autumn-v3']
-    model_frames = read_frames(model_ds, "nvidia")
+    parser.add_argument("--root-path",
+                        default="/gpfs/space/projects/Bolt/dataset",
+                        help='Path to extracted datasets')
+    parser.add_argument('--expert-datasets',
+                        nargs='+',
+                        default=['2021-10-26-10-49-06_e2e_rec_ss20_elva',
+                                 '2021-10-26-11-08-59_e2e_rec_ss20_elva_back'],
+                        help='Datasets used for ground truth tracjectories.')
+    parser.add_argument('--drive-datasets',
+                        nargs='+',
+                        required=True,
+                        default=[],
+                        help='Datasets used to calculate metrics for.')
+    parser.add_argument('--input-modality',
+                        default='nvidia',
+                        help='Input modality used for driving')
+
+    args = parser.parse_args()
+
+    root_path = Path(args.root_path)
+
+    expert_ds = [root_path / dataset_path for dataset_path in args.expert_datasets]
+    expert_frames = read_frames(expert_ds, args.input_modality)
+
+    drive_ds = [root_path / dataset_path for dataset_path in args.drive_datasets]
+    model_frames = read_frames(drive_ds, args.input_modality)
 
     print(calculate_closed_loop_metrics(model_frames, expert_frames))
