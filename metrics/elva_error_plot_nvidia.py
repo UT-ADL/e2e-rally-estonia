@@ -52,4 +52,4 @@ if __name__ == "__main__":
         print(i, name)
         draw_error_plot(ax[i][1], model_frames, expert_frames_back, f"{name} Elva backward")
 
-    fig.savefig("elva-2021-11-25.png", facecolor="white")
+    fig.savefig("elva-2021-11-25-nvidia.png", facecolor="white")
