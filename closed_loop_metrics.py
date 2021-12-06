@@ -60,8 +60,6 @@ def calculate_whiteness(steering_angles, fps=30):
 
 
 def calculate_lateral_errors(model_frames, expert_frames, only_autonomous=True):
-    print(model_frames)
-    print(expert_frames)
     model_trajectory_df = model_frames[["position_x", "position_y", "autonomous"]].rename(
         columns={"position_x": "X", "position_y": "Y"})
     expert_trajectory_df = expert_frames[["position_x", "position_y", "autonomous"]].rename(
