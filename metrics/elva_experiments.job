@@ -8,4 +8,4 @@ module load python/3.6.3/virtenv
 source activate ros2
 cd /gpfs/space/home/rometaid/nvidia-e2e/metrics
 
-srun ./closed_loop_metrics.sh
+srun ./closed_loop_metrics_elva.sh
