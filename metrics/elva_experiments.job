@@ -1,0 +1,11 @@
+#!/bin/bash
+#SBATCH --job-name="Elva paper experiments"
+#SBATCH --time=20:00:00
+#SBATCH --cpus-per-task=1
+#SBATCH --partition=main
+
+module load python/3.6.3/virtenv
+source activate ros2
+cd /gpfs/space/home/rometaid/nvidia-e2e/data_extract
+
+srun ./closed_loop_metrics.sh
