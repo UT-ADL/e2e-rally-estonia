@@ -98,7 +98,9 @@ def calculate_interventions(frames):
 
 def read_frames(dataset_paths, filename):
     datasets = [pd.read_csv(dataset_path / filename) for dataset_path in dataset_paths]
-    return pd.concat(datasets)
+    frames_df = pd.concat(datasets)
+    frames_df = frames_df[['steering_angle', 'position_x', 'position_y', 'autonomous']].dropna()
+    return frames_df
 
 
 if __name__ == "__main__":
