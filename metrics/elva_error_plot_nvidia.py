@@ -33,7 +33,7 @@ if __name__ == "__main__":
     }
 
     datasets = {
-        'Camera v1': read_frames([root_path / '2021-11-25-12-21-17_e2e_rec_elva-nvidia-v1-0.8-forward'], "nvidia_frames.csv"),
+        'Camera v1': read_frames([root_path / '2021-11-25-12-21-17_e2e_rec_elva-nvidia-v1-0.8-forward'][:-1000], "nvidia_frames.csv"),
         'Camera v2': read_frames([root_path / '2021-11-25-14-13-59_e2e_rec_elva-licamera-v2-0.8-forward'], "nvidia_frames.csv"),
         'Camera v3': read_frames([root_path / '2021-11-25-15-04-26_e2e_rec_elva-l-camera-v3-0.8-forward'], "nvidia_frames.csv"),
         'Camera in train': read_frames([root_path / '2021-11-25-13-24-00_e2e_rec_elva-licamera-inTrain-0.8-forward'], "nvidia_frames.csv"),
