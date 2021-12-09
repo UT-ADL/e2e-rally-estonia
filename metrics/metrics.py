@@ -21,6 +21,7 @@ def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_r
     mae = lat_errors.mean()
     rmse = np.sqrt((lat_errors ** 2).mean())
     failure_rate = len(lat_errors[lat_errors > failure_rate_threshold]) / float(len(lat_errors)) * 100
+    distance = calculate_distance(model_frames)
     interventions = calculate_interventions(model_frames)
 
     return {
@@ -28,6 +29,8 @@ def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_r
         'rmse': rmse,
         'max': max,
         'failure_rate': failure_rate,
+        'distance': distance,
+        'distance_per_intervention': distance / interventions,
         'interventions': interventions,
         'whiteness': whiteness,
         'expert_whiteness': expert_whiteness,
@@ -94,6 +97,13 @@ def calculate_lateral_errors(model_frames, expert_frames, only_autonomous=True):
 def calculate_interventions(frames):
     frames['autonomous_next'] = frames.shift(-1)['autonomous']
     return len(frames[frames.autonomous & (frames.autonomous_next == False)])
+
+def calculate_distance(frames):
+    x1 = frames['position_x']
+    y1 = frames['position_y']
+    x2 = frames.shift(-1)['position_x']
+    y2 = frames.shift(-1)['position_y']
+    return np.sum(np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2))
 
 
 def read_frames(dataset_paths, filename):
