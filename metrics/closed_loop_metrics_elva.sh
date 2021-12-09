@@ -10,18 +10,18 @@ echo "Camera in train"
 python metrics.py --input-modality nvidia-camera --drive-datasets 2021-11-25-13-11-40_e2e_rec_elva-licamera-inTrain-0.8-back 2021-11-25-13-24-00_e2e_rec_elva-licamera-inTrain-0.8-forward
 
 echo "Lidar v1"
-python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-12-37-01_e2e_rec_elva-lidar-v1-0.8-back 2021-11-25-12-45-35_e2e_rec_elva-lidar-v1-0.8-back 2021-11-25-12-57-24_e2e_rec_elva-lidar-v1-0.8-forward
+python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-12-45-35_e2e_rec_elva-lidar-v1-0.8-back 2021-11-25-12-57-24_e2e_rec_elva-lidar-v1-0.8-forward
 echo "Lidar v2"
 python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-14-27-56_e2e_rec_elva-lidar-v2-0.8-back 2021-11-25-14-39-43_e2e_rec_elva-lidar-v2-0.8-forward
 echo "Lidar v3"
 python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-15-16-31_e2e_rec_elva-l-lidar-v3-0.8-back 2021-11-25-15-27-38_e2e_rec_elva-l-lidar-v3-0.8-forward
 echo "Lidar in train"
 python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-13-37-42_e2e_rec_elva-lilidar-inTrain-0.8-back 2021-11-25-13-48-44_e2e_rec_elva-lilidar-inTrain-0.8-forward
-echo "Lidar night"
-python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-16-57-26_e2e_rec_elva-lidar-inTrain-0.8-forwardNight 2021-11-25-17-08-28_e2e_rec_elva-lidar-inTrain-0.8-backNight
 echo "Lidar in train night"
+python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-16-57-26_e2e_rec_elva-lidar-inTrain-0.8-forwardNight 2021-11-25-17-08-28_e2e_rec_elva-lidar-inTrain-0.8-backNight
+echo "Lidar night"
 python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-17-31-42_e2e_rec_elva-lidar-0.8-forwardNight 2021-11-25-17-43-47_e2e_rec_elva-lidar-0.8-backNight
-echo "Lidar in train night #2"
+echo "Lidar night #2"
 python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-17-56-16_e2e_rec_elva-lidar-0.8-forwardNight_attempt2 2021-11-25-18-07-28_e2e_rec_elva-lidar-0.8-backNight_attempt2
 
 echo "Lidar all channels"

@@ -26,7 +26,7 @@ if __name__ == "__main__":
     root_path = Path("/gpfs/space/projects/Bolt/dataset")
 
     datasets_backwards = {
-        'Lidar v1': read_frames([root_path / '2021-11-25-12-37-01_e2e_rec_elva-lidar-v1-0.8-back', root_path / '2021-11-25-12-45-35_e2e_rec_elva-lidar-v1-0.8-back'], "lidar_frames.csv"),
+        'Lidar v1': read_frames([root_path / '2021-11-25-12-45-35_e2e_rec_elva-lidar-v1-0.8-back'], "lidar_frames.csv"),
         'Lidar v2': read_frames([root_path / '2021-11-25-14-27-56_e2e_rec_elva-lidar-v2-0.8-back'], "lidar_frames.csv"),
         'Lidar v3': read_frames([root_path / '2021-11-25-15-16-31_e2e_rec_elva-l-lidar-v3-0.8-back'], "lidar_frames.csv"),
         'Lidar in train': read_frames([root_path / '2021-11-25-13-37-42_e2e_rec_elva-lilidar-inTrain-0.8-back'], "lidar_frames.csv"),
