@@ -15,11 +15,12 @@ from tf.transformations import euler_from_quaternion
 
 class NvidiaDriveImporter:
 
-    def __init__(self, bag_files, extract_dir, resize_camera_images, extract_side_cameras):
+    def __init__(self, bag_files, extract_dir, resize_camera_images, extract_side_cameras, image_type):
         self.bag_files = bag_files
         self.extract_dir = extract_dir
         self.resize_camera_image = resize_camera_images
         self.extract_side_cameras = extract_side_cameras
+        self.image_type = image_type
 
         self.steer_topic = '/pacmod/parsed_tx/steer_rpt'
         self.speed_topic = '/pacmod/parsed_tx/vehicle_speed_rpt'
@@ -73,9 +74,9 @@ class NvidiaDriveImporter:
     def import_bags(self):
         for bag_file in self.bag_files:
             print(f"Importing bag {bag_file}")
-            self.import_bag(bag_file)
+            self.import_bag(bag_file, self.image_type)
 
-    def import_bag(self, bag_file):
+    def import_bag(self, bag_file, image_type):
         bag = rosbag.Bag(bag_file, "r")
         bridge = CvBridge()
 
@@ -157,7 +158,7 @@ class NvidiaDriveImporter:
                     camera_dict["timestamp"].append(msg_timestamp)
                     camera_dict["autonomous"].append(autonomous)
                     camera_dict["camera"].append(camera_name)
-                    image_name = f"{msg_timestamp}.png"
+                    image_name = f"{msg_timestamp}.{image_type}"
                     camera_dict["filename"].append(str(Path(output_folder.stem) / image_name))
                     cv_img = bridge.compressed_imgmsg_to_cv2(msg)
                     if self.resize_camera_image:
@@ -173,7 +174,7 @@ class NvidiaDriveImporter:
                                 output_folder = root_folder / camera_name
                                 lidar_dict["timestamp"].append(oi.ts)
                                 lidar_dict["autonomous"].append(autonomous)
-                                image_name = f"{oi.ts}.png"
+                                image_name = f"{oi.ts}.{image_type}"
                                 lidar_dict["lidar_filename"].append(str(Path(output_folder.stem) / image_name))
                                 cv2.imwrite(str(output_folder / image_name), lidar_image)
                         oi = OusterImage(msg_timestamp)
@@ -278,8 +279,10 @@ class OusterImage(object):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--bag-file", type=str)
-    parser.add_argument("--extract-dir", type=str)
+    parser.add_argument("--bag-file",
+                        help="Path to bag file to extract")
+    parser.add_argument("--extract-dir",
+                        help="Directory where bag content is extracted to")
 
     parser.add_argument("--resize-camera-images",
                         default=False,
@@ -291,10 +294,16 @@ if __name__ == "__main__":
                         action='store_true',
                         help='Extract left and right side camera images')
 
+    parser.add_argument("--image-type",
+                        default="png",
+                        required=False,
+                        choices=["png", "jpg"],
+                        help="")
+
     args = parser.parse_args()
 
     bags = [
         args.bag_file
     ]
-    importer = NvidiaDriveImporter(bags, args.extract_dir, args.resize_camera_images, args.extract_side_cameras)
+    importer = NvidiaDriveImporter(bags, args.extract_dir, args.resize_camera_images, args.extract_side_cameras, args.image_type)
     importer.import_bags()
