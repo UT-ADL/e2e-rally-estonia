@@ -20,7 +20,7 @@ python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-13-3
 echo "Lidar night"
 python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-16-57-26_e2e_rec_elva-lidar-inTrain-0.8-forwardNight 2021-11-25-17-08-28_e2e_rec_elva-lidar-inTrain-0.8-backNight
 echo "Lidar in train night"
-python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-17-20-55_e2e_rec_elva-lidar-0.8-forwardNight 2021-11-25-17-31-42_e2e_rec_elva-lidar-0.8-forwardNight 2021-11-25-17-43-47_e2e_rec_elva-lidar-0.8-backNight
+python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-17-31-42_e2e_rec_elva-lidar-0.8-forwardNight 2021-11-25-17-43-47_e2e_rec_elva-lidar-0.8-backNight
 echo "Lidar in train night #2"
 python metrics.py --input-modality ouster-lidar --drive-datasets 2021-11-25-17-56-16_e2e_rec_elva-lidar-0.8-forwardNight_attempt2 2021-11-25-18-07-28_e2e_rec_elva-lidar-0.8-backNight_attempt2
 

@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     datasets = {
         'Lidar in train night': read_frames([root_path / '2021-11-25-16-57-26_e2e_rec_elva-lidar-inTrain-0.8-forwardNight'], "lidar_frames.csv"),
-        'Lidar train night': read_frames([root_path / '2021-11-25-17-20-55_e2e_rec_elva-lidar-0.8-forwardNight', root_path / "2021-11-25-17-31-42_e2e_rec_elva-lidar-0.8-forwardNight"], "lidar_frames.csv"),
+        'Lidar train night': read_frames([root_path / "2021-11-25-17-31-42_e2e_rec_elva-lidar-0.8-forwardNight"], "lidar_frames.csv"),
         'Lidar train night #2': read_frames([root_path / '2021-11-25-17-56-16_e2e_rec_elva-lidar-0.8-forwardNight_attempt2'], "lidar_frames.csv"),
     }
     expert_frames = read_frames([root_path / '2021-10-26-10-49-06_e2e_rec_ss20_elva'], "lidar_frames.csv")
