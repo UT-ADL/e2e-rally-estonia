@@ -8,7 +8,6 @@
 BAGS=(
     '2021-11-25-12-09-43_e2e_rec_elva-nvidia-v1-0.8.bag' \
     '2021-11-25-12-21-17_e2e_rec_elva-nvidia-v1-0.8-forward.bag' \
-    '2021-11-25-12-37-01_e2e_rec_elva-lidar-v1-0.8-back.bag' \
     '2021-11-25-12-45-35_e2e_rec_elva-lidar-v1-0.8-back.bag' \
     '2021-11-25-12-57-24_e2e_rec_elva-lidar-v1-0.8-forward.bag' \
     '2021-11-25-13-11-40_e2e_rec_elva-licamera-inTrain-0.8-back.bag' \
