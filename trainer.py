@@ -1,14 +1,12 @@
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import onnx
-import pandas as pd
 import torch
-from sklearn.neighbors import BallTree
+import wandb
 from tqdm.auto import tqdm
 
-import wandb
+from metrics.metrics import calculate_open_loop_metrics
 
 
 class Trainer:
@@ -62,12 +60,17 @@ class Trainer:
 
         model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
         model.to(self.device)
-        metrics = self.calculate_open_loop_metrics(model, valid_loader, fps=fps)
+        self.calculate_metrics(fps, model, valid_loader)
+
+        return best_valid_loss
+
+    def calculate_metrics(self, fps, model, valid_loader):
+        predictions = self.predict(model, valid_loader)
+        true_steering_angles = valid_loader.dataset.frames.steering_angle.to_numpy()
+        metrics = calculate_open_loop_metrics(predictions, true_steering_angles, fps=fps)
         print(metrics)
         if self.wandb_logging:
             wandb.log(metrics)
-
-        return best_valid_loss
 
     def save_models(self, model, valid_loader):
         torch.save(model.state_dict(), self.save_dir / "last.pt")
@@ -154,89 +157,3 @@ class Trainer:
 
         total_loss = epoch_loss / len(iterator)
         return total_loss
-
-    def calculate_whiteness(self, steering_angles, fps=30):
-        current_angles = steering_angles[:-1]
-        next_angles = steering_angles[1:]
-        delta_angles = next_angles - current_angles
-        whiteness = np.sqrt(((delta_angles * fps) ** 2).mean())
-        return whiteness
-
-    def calculate_open_loop_metrics(self, model, dataloader, fps):
-        predictions = self.predict(model, dataloader)
-        predicted_degrees = np.array(predictions) / np.pi * 180
-        true_degrees = dataloader.dataset.frames.steering_angle.to_numpy() / np.pi * 180
-        errors = np.abs(true_degrees - predicted_degrees)
-        mae = errors.mean()
-        rmse = np.sqrt((errors ** 2).mean())
-        max = errors.max()
-
-        whiteness = self.calculate_whiteness(predicted_degrees, fps)
-        expert_whiteness = self.calculate_whiteness(true_degrees, fps)
-
-        return {
-            'mae': mae,
-            'rmse': rmse,
-            'max': max,
-            'whiteness': whiteness,
-            'expert_whiteness': expert_whiteness
-        }
-
-    def calculate_closed_loop_metrics(self, model_dataset, expert_dataset, fps=30, failure_rate_threshold=1.0,
-                                      only_autonomous=True):
-        model_steering = model_dataset.steering_angles_degrees()
-        true_steering = expert_dataset.steering_angles_degrees()
-
-        lat_errors = self.calculate_lateral_errors(model_dataset, expert_dataset, only_autonomous)
-        whiteness = self.calculate_whiteness(model_steering, fps)
-        expert_whiteness = self.calculate_whiteness(true_steering, fps)
-
-        max = lat_errors.max()
-        mae = lat_errors.mean()
-        rmse = np.sqrt((lat_errors ** 2).mean())
-        failure_rate = len(lat_errors[lat_errors > failure_rate_threshold]) / float(len(lat_errors)) * 100
-        interventions = self.calculate_interventions(model_dataset)
-
-        return {
-            'mae': mae,
-            'rmse': rmse,
-            'max': max,
-            'failure_rate': failure_rate,
-            'interventions': interventions,
-            'whiteness': whiteness,
-            'expert_whiteness': expert_whiteness,
-        }
-
-    def calculate_lateral_errors(self, model_dataset, expert_dataset, only_autonomous):
-        model_trajectory_df = model_dataset.frames[["position_x", "position_y", "autonomous"]].rename(
-            columns={"position_x": "X", "position_y": "Y"})
-        expert_trajectory_df = expert_dataset.frames[["position_x", "position_y", "autonomous"]].rename(
-            columns={"position_x": "X", "position_y": "Y"})
-
-        if only_autonomous:
-            model_trajectory_df = model_trajectory_df[model_trajectory_df.autonomous].reset_index(drop=True)
-
-        tree = BallTree(expert_trajectory_df.values)
-        inds, dists = tree.query_radius(model_trajectory_df.values, r=2, sort_results=True, return_distance=True)
-        closest_l = []
-        for i, ind in enumerate(inds):
-            if len(ind) >= 2:
-                closest = pd.DataFrame({
-                    'X1': [expert_trajectory_df.iloc[ind[0]].X],
-                    'Y1': [expert_trajectory_df.iloc[ind[0]].Y],
-                    'X2': [expert_trajectory_df.iloc[ind[1]].X],
-                    'Y2': [expert_trajectory_df.iloc[ind[1]].Y]},
-                    index=[i])
-                closest_l.append(closest)
-        closest_df = pd.concat(closest_l)
-        f = model_trajectory_df.join(closest_df)
-        lat_errors = abs((f.X2 - f.X1) * (f.Y1 - f.Y) - (f.X1 - f.X) * (f.Y2 - f.Y1)) / np.sqrt(
-            (f.X2 - f.X1) ** 2 + (f.Y2 - f.Y1) ** 2)
-        # lat_errors.dropna(inplace=True)  # Why na-s?
-
-        return lat_errors
-
-    def calculate_interventions(self, driving_dataset):
-        frames = driving_dataset.frames
-        frames['autonomous_next'] = frames.shift(-1)['autonomous']
-        return len(frames[frames.autonomous & (frames.autonomous_next == False)])

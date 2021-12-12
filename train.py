@@ -103,24 +103,28 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--max-epochs',
+        type=int,
         default=100,
         help="Maximium number of epochs to train"
     )
 
     argparser.add_argument(
         '--patience',
+        type=int,
         default=10,
         help="Number of epochs to train without improvement in validation loss. Used for early stopping."
     )
 
     argparser.add_argument(
         '--learning_rate',
+        type=float,
         default=1e-3,
         help="Learning rate used in training."
     )
 
     argparser.add_argument(
         '--weight-decay',
+        type=float,
         default=1e-02,
         help='Weight decay used in training.'
     )
