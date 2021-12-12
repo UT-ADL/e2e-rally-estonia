@@ -9,7 +9,6 @@ from sklearn.neighbors import BallTree
 from tqdm.auto import tqdm
 
 import wandb
-from network import PilotNet
 
 
 class Trainer:
@@ -27,7 +26,7 @@ class Trainer:
     def force_cpu(self):
         self.device = 'cpu'
 
-    def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch, patience=10):
+    def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch, patience=10, fps=30):
         if self.wandb_logging:
             wandb.init(project="lanefollowing-ut-vahi")
             wandb.watch(model, criterion)
@@ -63,7 +62,7 @@ class Trainer:
 
         model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
         model.to(self.device)
-        metrics = self.calculate_open_loop_metrics(model, valid_loader, fps=30)
+        metrics = self.calculate_open_loop_metrics(model, valid_loader, fps=fps)
         print(metrics)
         if self.wandb_logging:
             wandb.log(metrics)
