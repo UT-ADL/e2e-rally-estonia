@@ -19,19 +19,16 @@ Environment can set up using conda by following commands:
 
 ```bash
 # set up pytorch environment
-conda create -n lanefollowing pytorch torchvision cudatoolkit=11.1 -c pytorch -c nvidia
-conda activate lanefollowing
+conda create -n e2e pytorch torchvision cudatoolkit=11.1 jupyter pandas matplotlib tqdm scikit-learn scikit-image wandb onnx -c pytorch -c nvidia
+conda activate e2e
 
 # install opencv and moviepy for visualising predictions, these are not needed for training
 pip install opencv-contrib-python
 # need to use specific version of moviepy as newer version did not work
 pip install moviepy==1.0.0 
 ```
-conda install scikit-image
-conda install jupyter pandas matplotlib tqdm
-conda install -c conda-forge wandb
 
-Download tensorrt from nvidia web site.
+Download tensorrt (version?) from nvidia web site.
 sudo dpkg -i nv-tensorrt-repo-${os}-${tag}_1-1_amd64.deb
 sudo apt-key add /var/nv-tensorrt-repo-${os}-${tag}/7fa2af80.pub
 sudo apt-get update
