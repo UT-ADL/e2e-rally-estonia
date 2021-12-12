@@ -69,7 +69,7 @@ DATASETS = [
 
 
 def create_video(dataset_folder):
-    model_path = 'models/20211102005651_autumn-v2/best.pt'
+    model_path = '../models/20211102005651_autumn-v2/best.pt'
     create_prediction_video(ROOT_PATH / dataset_folder, model_path=model_path)
 
 
