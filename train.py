@@ -31,8 +31,13 @@ def train_model(model_name, dataset_folder, input_modality, lidar_channel,
     model = model.to(device)
     criterion = criterion.to(device)
 
+    if input_modality == "ouster-lidar":
+        fps = 10
+    else:
+        fps = 30
+
     trainer = Trainer(model_name, wandb_logging=wandb_logging)
-    trainer.train(model, train_loader, valid_loader, optimizer, criterion, max_epochs, patience)
+    trainer.train(model, train_loader, valid_loader, optimizer, criterion, max_epochs, patience, fps)
 
 
 def load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turns):
@@ -84,7 +89,7 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
-        '--dataset_folder',
+        '--dataset-folder',
         default="/media/romet/data2/datasets/rally-estonia/dataset",
         help='Root path to the dataset.'
     )
