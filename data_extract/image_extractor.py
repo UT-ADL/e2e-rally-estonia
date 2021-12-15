@@ -65,9 +65,14 @@ class NvidiaDriveImporter:
         }
 
         # Camera image dimensions
-        height = 1208
-        width = 1920
+        self.xmin = 300
+        self.xmax = 1620
+        self.ymin = 520
+        self.ymax = 864
         self.scale = 0.2
+
+        height = self.ymax - self.ymin
+        width = self.xmax - self.xmin
         self.scaled_width = int(self.scale * width)
         self.scaled_height = int(self.scale * height)
 
@@ -162,6 +167,7 @@ class NvidiaDriveImporter:
                     camera_dict["filename"].append(str(Path(output_folder.stem) / image_name))
                     cv_img = bridge.compressed_imgmsg_to_cv2(msg)
                     if self.resize_camera_image:
+                        cv_img = self.crop(cv_img)
                         cv_img = self.resize(cv_img)
                     cv2.imwrite(str(output_folder / image_name), cv_img)
                     progress.update(1)
@@ -250,6 +256,10 @@ class NvidiaDriveImporter:
     
     def resize(self, img):
         return cv2.resize(img, dsize=(self.scaled_width, self.scaled_height), interpolation=cv2.INTER_LINEAR)
+
+    def crop(self, img):
+        return img[self.ymin:self.ymax, self.xmin:self.xmax, :]
+
 
 
 class OusterImage(object):
