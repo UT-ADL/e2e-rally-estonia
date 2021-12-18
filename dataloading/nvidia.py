@@ -117,6 +117,11 @@ class NvidiaDataset(Dataset):
         frame = self.frames.iloc[idx]
         image = torchvision.io.read_image(frame["image_path"])
 
+        waypoints = []
+        for i in range(self.N_WAYPOINTS):
+            waypoints.append(frame[f"x_{i+1}_offset"])
+            waypoints.append(frame[f"y_{i+1}_offset"])
+
         data = {
             'image': image,
             'steering_angle': np.array(frame["steering_angle"]),
@@ -126,11 +131,7 @@ class NvidiaDataset(Dataset):
             'position_y': np.array(frame["position_y"]),
             'yaw': np.array(frame["yaw"]),
             'turn_signal': np.array(frame["turn_signal"]),
-            # 'waypoints': np.array([frame["x_1_offset"], frame["y_1_offset"],
-            #                        frame["x_2_offset"], frame["y_2_offset"],
-            #                        frame["x_3_offset"], frame["y_3_offset"],
-            #                        frame["x_4_offset"], frame["y_4_offset"],
-            #                        frame["x_5_offset"], frame["y_5_offset"]])
+            'waypoints': np.array(waypoints)
         }
 
         if self.transform:
@@ -156,26 +157,43 @@ class NvidiaDataset(Dataset):
         frames_df["turn_signal"].fillna(1, inplace=True)
         frames_df["turn_signal"] = frames_df["turn_signal"].astype(int)
 
-        # vehicle_x = frames_df["position_x"]
-        # vehicle_y = frames_df["position_y"]
-        # for i in np.arange(1, self.N_WAYPOINTS + 1):
-        #     wp_global_x = frames_df["position_x"].shift(-i * self.CAP_WAYPOINTS)
-        #     wp_global_y = frames_df["position_y"].shift(-i * self.CAP_WAYPOINTS)
-        #     yaw = frames_df["yaw"]
-        #     frames_df["yaw"] = yaw
+        vehicle_x = frames_df["position_x"]
+        vehicle_y = frames_df["position_y"]
+        len_before_filtering = len(frames_df)
+
+        for i in np.arange(1, self.N_WAYPOINTS + 1):
+            wp_global_x = frames_df["position_x"].shift(-i * self.CAP_WAYPOINTS)
+            wp_global_y = frames_df["position_y"].shift(-i * self.CAP_WAYPOINTS)
+            frames_df[f"x_{i}"] = wp_global_x
+            frames_df[f"y_{i}"] = wp_global_y
+            yaw = frames_df["yaw"]
+            frames_df["yaw"] = yaw
+
+            wp_local_x = (wp_global_x - vehicle_x) * np.cos(yaw) + (wp_global_y - vehicle_y) * np.sin(yaw)
+            wp_local_y = -(wp_global_x - vehicle_x) * np.sin(yaw) + (wp_global_y - vehicle_y) * np.cos(yaw)
+            frames_df[f"x_{i}_offset"] = wp_local_x
+            frames_df[f"y_{i}_offset"] = wp_local_y
+
+            # Remove rows without trajectory offsets, should be last N_WAYPOINTS rows
+            frames_df = frames_df[frames_df[f"x_{i}_offset"].notna()]
+
+        # frames_df["yaw_delta"] = np.abs(frames_df["yaw"]) - np.abs(frames_df["yaw"]).shift(-1)
+        # frames_df = frames_df[np.abs(frames_df["yaw_delta"]) < 0.1]
         #
-        #     wp_local_x = (wp_global_x - vehicle_x) * np.cos(yaw) + (wp_global_y - vehicle_y) * np.sin(yaw)
-        #     wp_local_y = -(wp_global_x - vehicle_x) * np.sin(yaw) + (wp_global_y - vehicle_y) * np.cos(yaw)
-        #     frames_df[f"x_{i}_offset"] = wp_local_x
-        #     frames_df[f"y_{i}_offset"] = wp_local_y
+        # frames_df["x_1_delta"] = frames_df["x_1_offset"] - frames_df["x_1_offset"].shift(-1)
+        # frames_df = frames_df[np.abs(frames_df["x_1_delta"]) < 0.1]
         #
-        #     # Remove rows without trajectory offsets, should be last N_WAYPOINTS rows
-        #     frames_df = frames_df[frames_df[f"x_{i}_offset"].notna()]
+        # frames_df["y_1_delta"] = frames_df["y_1_offset"] - frames_df["y_1_offset"].shift(-1)
+        # frames_df = frames_df[np.abs(frames_df["y_1_delta"]) < 0.1]
+
+        # frames_df = frames_df[np.abs(frames_df["steering_angle"]) < 2.0]
+
+        len_after_filtering = len(frames_df)
 
         camera_images = frames_df[f"{camera}_filename"].to_numpy()
         frames_df["image_path"] = [str(dataset_path / image_path) for image_path in camera_images]
 
-        print(f"{dataset_path}: {len(frames_df)}")
+        print(f"{dataset_path}: lenght={len(frames_df)}, filtered={len_before_filtering-len_after_filtering}")
         return frames_df
 
     def steering_angles_degrees(self):
