@@ -18,7 +18,7 @@ from trainer import Trainer
 from velocity_model.velocity_model import VelocityModel
 
 
-def create_driving_video(dataset_folder):
+def create_driving_video(dataset_folder, output_modality):
     dataset_path = Path(dataset_folder)
     dataset = NvidiaDataset([dataset_path], camera="front_wide")
 
@@ -26,7 +26,7 @@ def create_driving_video(dataset_folder):
     shutil.rmtree(temp_frames_folder, ignore_errors=True)
     temp_frames_folder.mkdir()
 
-    draw_driving_frames(dataset, temp_frames_folder)
+    draw_driving_frames(dataset, temp_frames_folder, output_modality)
     output_video_path = dataset_path / 'video.mp4'
     convert_frames_to_video(temp_frames_folder, output_video_path, fps=30)
 
@@ -147,7 +147,9 @@ def draw_prediction_frames(dataset, predicted_angles, predicted_speed, temp_fram
 
         io.imsave(f"{temp_frames_folder}/{frame_index + 1:05}.jpg", frame)
 
-def draw_driving_frames(dataset, temp_frames_folder):
+
+def draw_driving_frames(dataset, temp_frames_folder, output_modality):
+    print(f"Drawing driving frames with {output_modality}")
     t = tqdm(enumerate(dataset), total=len(dataset))
     t.set_description(dataset.name)
     for frame_index, data in t:
@@ -171,12 +173,19 @@ def draw_driving_frames(dataset, temp_frames_folder):
         cv2.putText(frame, 'Speed:   {:.2f} km/h'.format(true_speed), (10, 1200), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2,
                     cv2.LINE_AA)
 
-        radius = 200
-        steering_pos = (960, 1200)
-        cv2.circle(frame, steering_pos, radius, (255, 255, 255), 7)
+        if output_modality == "steering":
+            radius = 200
+            steering_pos = (960, 1200)
+            cv2.circle(frame, steering_pos, radius, (255, 255, 255), 7)
 
-        draw_steering_angle(frame, true_angle, radius, steering_pos, 13, color)
-        cv2.rectangle(frame, (935, 1200), (980, 1200 - int(3 * true_speed)), color, cv2.FILLED)
+            draw_steering_angle(frame, true_angle, radius, steering_pos, 13, color)
+            cv2.rectangle(frame, (935, 1200), (980, 1200 - int(3 * true_speed)), color, cv2.FILLED)
+
+        if output_modality == "waypoints":
+            scale = 5
+            waypoints = data["waypoints"]
+            for (x, y) in zip(waypoints[0::2], waypoints[1::2]):
+                cv2.circle(frame, (935 - int(scale * y), 1200 - int(scale * x)), 3, color, 5)
 
         io.imsave(f"{temp_frames_folder}/{frame_index + 1:05}.jpg", frame)
 
@@ -210,6 +219,13 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
+        '--output-modality',
+        default="steering",
+        choices=["steering", "waypoints"],
+        help="Choice of output modality to visualise."
+    )
+
+    argparser.add_argument(
         '--model-path',
         help="Path to pytorch model to use for creating steering predictions."
     )
@@ -221,6 +237,6 @@ if __name__ == "__main__":
     print("Creating video from: ", dataset_folder)
 
     if video_type == 'driving':
-        create_driving_video(dataset_folder)
+        create_driving_video(dataset_folder, args.output_modality)
     elif video_type == 'prediction':
         create_prediction_video(dataset_folder, model_path=model_path)
