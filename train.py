@@ -12,12 +12,12 @@ from network import PilotNet
 from trainer import Trainer
 
 
-def train_model(model_name, dataset_folder, input_modality, lidar_channel,
-                wandb_logging, max_epochs, patience,
-                learning_rate, weight_decay, filter_blinker_turns):
-    train_loader, valid_loader = load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turns)
+def train_model(model_name, dataset_folder, input_modality, lidar_channel, target_name,
+                wandb_project, max_epochs, patience,
+                learning_rate, weight_decay, filter_blinker_turns, batch_size, num_workers):
+    train_loader, valid_loader = load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turns, batch_size, num_workers)
 
-    print(f"Training model {model_name}, wandb_logging={wandb_logging}")
+    print(f"Training model {model_name}, wandb_project={wandb_project}")
     if lidar_channel:
         model = PilotNet(n_input_channels=1)
     else:
@@ -36,11 +36,12 @@ def train_model(model_name, dataset_folder, input_modality, lidar_channel,
     else:
         fps = 30
 
-    trainer = Trainer(model_name, wandb_logging=wandb_logging)
+    print(f"Training for target={target_name}")
+    trainer = Trainer(model_name, wandb_project=wandb_project, target_name=target_name)
     trainer.train(model, train_loader, valid_loader, optimizer, criterion, max_epochs, patience, fps)
 
 
-def load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turns):
+def load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turns, batch_size, num_workers):
     print(f"Reading {input_modality} data from {dataset_folder}, lidar_channel={lidar_channel}, filter_blinker_turns={filter_blinker_turns}")
     dataset_path = Path(dataset_folder)
     if input_modality == "nvidia-camera":
@@ -55,12 +56,13 @@ def load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turn
 
     print(f"Training data has {len(trainset.frames)} frames")
     print(f"Validation data has {len(validset.frames)} frames")
+    print(f"Creating {num_workers} workers with batch size {batch_size}")
 
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True,
-                                               num_workers=60, pin_memory=True, persistent_workers=True)
+    train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True,
+                                               num_workers=num_workers, pin_memory=True, persistent_workers=True)
 
-    valid_loader = torch.utils.data.DataLoader(validset, batch_size=64, shuffle=False,
-                                               num_workers=32, pin_memory=True, persistent_workers=True)
+    valid_loader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=False,
+                                               num_workers=num_workers, pin_memory=True, persistent_workers=True)
 
     return train_loader, valid_loader
 
@@ -89,16 +91,22 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
+        '--target-name',
+        required=False,
+        default="steering_angle",
+        choices=["steering_angle", "x_1_offset", "y_1_offset", "waypoints"],
+    )
+
+    argparser.add_argument(
         '--dataset-folder',
-        default="/media/romet/data2/datasets/rally-estonia/dataset",
+        default="/home/romet/data2/datasets/rally-estonia/dataset-small",
         help='Root path to the dataset.'
     )
 
     argparser.add_argument(
-        '--wandb-logging',
-        default=False,
-        action='store_true',
-        help='Log training information using W&B.'
+        '--wandb-project',
+        required=False,
+        help='W&B project name to use for metrics. Wandb logging is disabled when no project name is provided.'
     )
 
     argparser.add_argument(
@@ -116,7 +124,7 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
-        '--learning_rate',
+        '--learning-rate',
         type=float,
         default=1e-3,
         help="Learning rate used in training."
@@ -136,18 +144,31 @@ if __name__ == "__main__":
         help='When true, turns with blinker (left or right) on will be removed from training and validation data.'
     )
 
-    args = argparser.parse_args()
-    model_name = args.model_name
-    input_modality = args.input_modality
-    lidar_channel = args.lidar_channel
-    dataset_folder = args.dataset_folder
-    wandb_logging = args.wandb_logging
-    max_epochs = args.max_epochs
-    patience = args.patience
-    learning_rate = args.learning_rate
-    weight_decay = args.weight_decay
-    filter_blinker_turns = args.filter_blinker_turns
+    argparser.add_argument(
+        '--batch-size',
+        type=int,
+        default=512,
+        help='Weight decay used in training.'
+    )
 
-    train_model(model_name, dataset_folder, input_modality, lidar_channel, wandb_logging, max_epochs, patience, learning_rate,
-                weight_decay,
-                filter_blinker_turns)
+    argparser.add_argument(
+        '--num-workers',
+        type=int,
+        default=16,
+        help='Weight decay used in training.'
+    )
+
+    args = argparser.parse_args()
+    train_model(args.model_name,
+                args.dataset_folder,
+                args.input_modality,
+                args.lidar_channel,
+                args.target_name,
+                args.wandb_project,
+                args.max_epochs,
+                args.patience,
+                args.learning_rate,
+                args.weight_decay,
+                args.filter_blinker_turns,
+                args.batch_size,
+                args.num_workers)

@@ -11,10 +11,14 @@ from metrics.metrics import calculate_open_loop_metrics
 
 class Trainer:
 
-    def __init__(self, model_name=None, target_name="steering_angle", wandb_logging=False):
+    def __init__(self, model_name=None, target_name="steering_angle", wandb_project=None):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.target_name = target_name
-        self.wandb_logging = wandb_logging
+        self.wandb_logging = False
+
+        if wandb_project:
+            self.wandb_logging = True
+            wandb.init(project="nvidia-e2e-tests")
 
         if model_name:
             datetime_prefix = datetime.today().strftime('%Y%m%d%H%M%S')
@@ -26,7 +30,6 @@ class Trainer:
 
     def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch, patience=10, fps=30):
         if self.wandb_logging:
-            wandb.init(project="lanefollowing-ut-vahi")
             wandb.watch(model, criterion)
 
         best_valid_loss = float('inf')
@@ -35,13 +38,13 @@ class Trainer:
         for epoch in range(n_epoch):
 
             progress_bar = tqdm(total=len(train_loader), smoothing=0)
-            train_loss = self.train_epoch(model, train_loader, optimizer, criterion, progress_bar)
-            valid_loss = self.evaluate(model, valid_loader, criterion)
-            progress_bar.set_description(
-                f'epoch: {epoch + 1} | train loss: {train_loss:.4f} | valid loss: {valid_loss:.4f}')
+            train_loss = self.train_epoch(model, train_loader, optimizer, criterion, progress_bar, epoch)
+
+            progress_bar.reset(total=len(valid_loader))
+            valid_loss = self.evaluate(model, valid_loader, criterion, progress_bar, epoch, train_loss)
 
             if valid_loss < best_valid_loss:
-                print("Saving best model.")
+                progress_bar.set_description(f'*epoch {epoch + 1} | train loss: {train_loss:.4f} | valid loss: {valid_loss:.4f}')
                 best_valid_loss = valid_loss
 
                 torch.save(model.state_dict(), self.save_dir / "best.pt")
@@ -100,7 +103,7 @@ class Trainer:
         if self.wandb_logging:
             wandb.save(f"{self.save_dir}/last.onnx")
 
-    def train_epoch(self, model, loader, optimizer, criterion, progress_bar):
+    def train_epoch(self, model, loader, optimizer, criterion, progress_bar, epoch):
         running_loss = 0.0
 
         model.train()
@@ -120,7 +123,7 @@ class Trainer:
             running_loss += loss.item()
 
             progress_bar.update(1)
-            progress_bar.set_description(f'train loss: {(running_loss / (i + 1)):.4f}')
+            progress_bar.set_description(f'epoch {epoch+1} | train loss: {(running_loss / (i + 1)):.4f}')
 
         return running_loss / len(loader)
 
@@ -138,14 +141,13 @@ class Trainer:
 
         return all_predictions
 
-    def evaluate(self, model, iterator, criterion):
+    def evaluate(self, model, iterator, criterion, progress_bar, epoch, train_loss):
         epoch_loss = 0.0
 
         model.eval()
 
         with torch.no_grad():
-            progress_bar = tqdm(total=len(iterator), smoothing=0)
-            for data in iterator:
+            for i, data in enumerate(iterator):
                 inputs = data['image'].to(self.device)
                 target_values = data[self.target_name].to(self.device)
 
@@ -154,6 +156,7 @@ class Trainer:
 
                 epoch_loss += loss.item()
                 progress_bar.update(1)
+                progress_bar.set_description(f'epoch {epoch + 1} | train loss: {train_loss:.4f} | valid loss: {(epoch_loss / (i + 1)):.4f}')
 
         total_loss = epoch_loss / len(iterator)
         return total_loss
