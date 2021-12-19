@@ -61,9 +61,11 @@ class Trainer:
 
         self.save_models(model, valid_loader)
 
-        model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
-        model.to(self.device)
-        self.calculate_metrics(fps, model, valid_loader)
+        if self.target_name == "steering":
+            model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
+            model.to(self.device)
+            self.calculate_metrics(fps, model, valid_loader)
+        # todo: calculate metrics for waypoints
 
         return best_valid_loss
 

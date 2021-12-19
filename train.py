@@ -12,16 +12,22 @@ from network import PilotNet
 from trainer import Trainer
 
 
-def train_model(model_name, dataset_folder, input_modality, lidar_channel, target_name,
+def train_model(model_name, dataset_folder, input_modality, lidar_channel, output_modality,
                 wandb_project, max_epochs, patience,
                 learning_rate, weight_decay, filter_blinker_turns, batch_size, num_workers):
-    train_loader, valid_loader = load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turns, batch_size, num_workers)
+    train_loader, valid_loader = load_data(dataset_folder, input_modality, lidar_channel, output_modality,
+                                           filter_blinker_turns, batch_size, num_workers)
 
     print(f"Training model {model_name}, wandb_project={wandb_project}")
-    if lidar_channel:
-        model = PilotNet(n_input_channels=1)
+    if output_modality == "waypoints":
+        n_outputs = 10
     else:
-        model = PilotNet(n_input_channels=3)
+        n_outputs = 1
+
+    if lidar_channel:
+        model = PilotNet(n_input_channels=1, n_outputs=n_outputs)
+    else:
+        model = PilotNet(n_input_channels=3, n_outputs=n_outputs)
 
     criterion = nn.L1Loss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.999),
@@ -36,17 +42,18 @@ def train_model(model_name, dataset_folder, input_modality, lidar_channel, targe
     else:
         fps = 30
 
-    print(f"Training for target={target_name}")
-    trainer = Trainer(model_name, wandb_project=wandb_project, target_name=target_name)
+    trainer = Trainer(model_name, wandb_project=wandb_project, target_name=output_modality)
     trainer.train(model, train_loader, valid_loader, optimizer, criterion, max_epochs, patience, fps)
 
 
-def load_data(dataset_folder, input_modality, lidar_channel, filter_blinker_turns, batch_size, num_workers):
-    print(f"Reading {input_modality} data from {dataset_folder}, lidar_channel={lidar_channel}, filter_blinker_turns={filter_blinker_turns}")
+def load_data(dataset_folder, input_modality, lidar_channel, output_modality,
+              filter_blinker_turns, batch_size, num_workers):
+    print(f"Reading {input_modality} data from {dataset_folder}, lidar_channel={lidar_channel}, "
+          f"output_modality={output_modality}, filter_blinker_turns={filter_blinker_turns}")
     dataset_path = Path(dataset_folder)
     if input_modality == "nvidia-camera":
-        trainset = NvidiaTrainDataset(dataset_path, filter_turns=filter_blinker_turns)
-        validset = NvidiaValidationDataset(dataset_path, filter_turns=filter_blinker_turns)
+        trainset = NvidiaTrainDataset(dataset_path, filter_turns=filter_blinker_turns, output_modality=output_modality)
+        validset = NvidiaValidationDataset(dataset_path, filter_turns=filter_blinker_turns, output_modality=output_modality)
     elif input_modality == "ouster-lidar":
         trainset = OusterTrainDataset(dataset_path, filter_turns=filter_blinker_turns, channel=lidar_channel)
         validset = OusterValidationDataset(dataset_path, filter_turns=filter_blinker_turns, channel=lidar_channel)
@@ -91,10 +98,11 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
-        '--target-name',
+        '--output-modality',
         required=False,
         default="steering_angle",
-        choices=["steering_angle", "x_1_offset", "y_1_offset", "waypoints"],
+        choices=["steering_angle", "waypoints"],
+        help="Choice of output modalities to train model with."
     )
 
     argparser.add_argument(
@@ -163,7 +171,7 @@ if __name__ == "__main__":
                 args.dataset_folder,
                 args.input_modality,
                 args.lidar_channel,
-                args.target_name,
+                args.output_modality,
                 args.wandb_project,
                 args.max_epochs,
                 args.patience,
