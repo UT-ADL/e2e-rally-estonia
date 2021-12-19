@@ -101,12 +101,12 @@ class NvidiaDataset(Dataset):
     CAP_WAYPOINTS = 30
 
     def __init__(self, dataset_paths, transform=None, camera="front_wide", name="Nvidia dataset",
-                 filter_turns=False, calculate_waypoints=False):
+                 filter_turns=False, output_modality="steering"):
         self.name = name
         self.dataset_paths = dataset_paths
         self.transform = transform
         self.camera_name = camera
-        self.calculate_waypoints = calculate_waypoints
+        self.calculate_waypoints = output_modality == "waypoints"
 
         datasets = [self.read_dataset(dataset_path, camera) for dataset_path in dataset_paths]
         self.frames = pd.concat(datasets)
@@ -207,7 +207,7 @@ class NvidiaDataset(Dataset):
 
 
 class NvidiaTrainDataset(NvidiaDataset):
-    def __init__(self, root_path, filter_turns=False):
+    def __init__(self, root_path, filter_turns=False, output_modality="steering"):
         train_paths = [
             root_path / "2021-05-20-12-36-10_e2e_sulaoja_20_30",
             root_path / "2021-05-20-12-43-17_e2e_sulaoja_20_30",
@@ -258,11 +258,11 @@ class NvidiaTrainDataset(NvidiaDataset):
 
         tr = transforms.Compose([Normalize()])
 
-        super().__init__(train_paths, tr, filter_turns=filter_turns)
+        super().__init__(train_paths, tr, filter_turns=filter_turns, output_modality=output_modality)
 
 
 class NvidiaValidationDataset(NvidiaDataset):
-    def __init__(self, root_path, filter_turns=False):
+    def __init__(self, root_path, filter_turns=False, output_modality="steering"):
         valid_paths = [
             root_path / "2021-05-28-15-19-48_e2e_sulaoja_20_30",
             root_path / "2021-06-07-14-20-07_e2e_rec_ss6",
@@ -278,7 +278,8 @@ class NvidiaValidationDataset(NvidiaDataset):
         ]
 
         tr = transforms.Compose([Normalize()])
-        super().__init__(valid_paths, tr, filter_turns=filter_turns)
+        super().__init__(valid_paths, tr, filter_turns=filter_turns, output_modality=output_modality)
+
 
 class NvidiaTestDataset(NvidiaDataset):
     def __init__(self, root_path, filter_turns=False):
