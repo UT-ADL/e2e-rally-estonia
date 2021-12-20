@@ -62,24 +62,27 @@ def create_prediction_video(dataset_folder, output_modality, model_path):
 
 def get_steering_predictions(dataset_path, model_path):
     print(f"{dataset_path.name}: steering predictions")
-    trainer = Trainer(None)
+    trainer = Trainer(None, target_name="steering_angle", n_conditional_branches=3)
     #trainer.force_cpu()  # not enough memory on GPU for parallel processing  # TODO: make input argument
-    torch_model = trainer.load_model(model_path)
-    torch_model.eval()
+    model = PilotNet(n_outputs=1, n_branches=3)
+    model.load_state_dict(torch.load(model_path))
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    model.eval()
 
     tr = transforms.Compose([NvidiaCropWide(), Normalize()])
     dataset = NvidiaDataset([dataset_path], tr, name=dataset_path.name)
     validloader_tr = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False,
                                          num_workers=16, pin_memory=True, persistent_workers=True)
-    steering_predictions = trainer.predict(torch_model, validloader_tr)
+    steering_predictions = trainer.predict(model, validloader_tr)
     return steering_predictions
 
 def get_trajectory_predictions(dataset_path, model_path):
     print(f"{dataset_path.name}: trajectory predictions")
-    trainer = Trainer(None)
+    trainer = Trainer(None, target_name="waypoints", n_conditional_branches=3)
     #trainer.force_cpu()  # not enough memory on GPU for parallel processing  # TODO: make input argument
 
-    model = PilotNet(n_outputs=10)
+    model = PilotNet(n_outputs=10, n_branches=3)
     model.load_state_dict(torch.load(model_path))
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
@@ -90,7 +93,6 @@ def get_trajectory_predictions(dataset_path, model_path):
     validloader_tr = torch.utils.data.DataLoader(dataset, batch_size=512, shuffle=False,
                                          num_workers=16, pin_memory=True, persistent_workers=True)
     waypoints = trainer.predict(model, validloader_tr)
-    print("waypoints: ", len(waypoints))
     return waypoints
 
 def get_speed_predictions(dataset):
@@ -123,7 +125,7 @@ def draw_prediction_frames_wp(dataset, trajectory, temp_frames_folder):
     t = tqdm(enumerate(dataset), total=len(dataset))
     t.set_description(dataset.name)
 
-    for frame_index, data in t:
+    for frame_index, (data, target_values, condition_mask) in t:
         frame = data["image"].permute(1, 2, 0).cpu().numpy()
         true_angle = math.degrees(data["steering_angle"])
         true_speed = data["vehicle_speed"] * 3.6
@@ -172,7 +174,7 @@ def draw_prediction_frames(dataset, predicted_angles, predicted_speed, temp_fram
     t = tqdm(enumerate(dataset), total=len(dataset))
     t.set_description(dataset.name)
 
-    for frame_index, data in t:
+    for frame_index, (data, target_values, condition_mask) in t:
         frame = data["image"].permute(1, 2, 0).cpu().numpy()
         true_angle = math.degrees(data["steering_angle"])
         pred_angle = math.degrees(predicted_angles[frame_index])

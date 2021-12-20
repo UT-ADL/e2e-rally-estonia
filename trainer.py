@@ -11,9 +11,10 @@ from metrics.metrics import calculate_open_loop_metrics
 
 class Trainer:
 
-    def __init__(self, model_name=None, target_name="steering_angle", wandb_project=None):
+    def __init__(self, model_name=None, target_name="steering_angle", n_conditional_branches=1, wandb_project=None):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.target_name = target_name
+        self.n_conditional_branches = n_conditional_branches
         self.wandb_logging = False
 
         if wandb_project:
@@ -110,14 +111,15 @@ class Trainer:
 
         model.train()
 
-        for i, data in enumerate(loader):
+        for i, (data, target_values, condition_mask) in enumerate(loader):
             inputs = data['image'].to(self.device)
-            target_values = data[self.target_name].to(self.device)
+            target_values = target_values.to(self.device)
+            condition_mask = condition_mask.to(self.device)
 
             optimizer.zero_grad()
 
-            predictions = model(inputs).squeeze(1)
-            loss = criterion(predictions, target_values)
+            predictions = model(inputs)
+            loss = criterion(predictions*condition_mask, target_values) * self.n_conditional_branches
 
             loss.backward()
             optimizer.step()
@@ -135,10 +137,15 @@ class Trainer:
 
         with torch.no_grad():
             progress_bar = tqdm(total=len(dataloader), smoothing=0)
-            for data in dataloader:
+            for i, (data, target_values, condition_mask) in enumerate(dataloader):
                 inputs = data['image'].to(self.device)
-                predictions = model(inputs).squeeze(1)
-                all_predictions.extend(predictions.cpu().numpy())
+                condition_mask = condition_mask.to(self.device)
+                predictions = model(inputs)
+
+                masked_predictions = predictions[condition_mask == 1]
+                masked_predictions = masked_predictions.reshape(predictions.shape[0], -1)
+
+                all_predictions.extend(masked_predictions.cpu().numpy())
                 progress_bar.update(1)
 
         return all_predictions
@@ -149,12 +156,13 @@ class Trainer:
         model.eval()
 
         with torch.no_grad():
-            for i, data in enumerate(iterator):
+            for i, (data, target_values, condition_mask) in enumerate(iterator):
                 inputs = data['image'].to(self.device)
-                target_values = data[self.target_name].to(self.device)
+                target_values = target_values.to(self.device)
+                condition_mask = condition_mask.to(self.device)
 
-                predictions = model(inputs).squeeze(1)
-                loss = criterion(predictions, target_values)
+                predictions = model(inputs)
+                loss = criterion(predictions*condition_mask, target_values) * self.n_conditional_branches
 
                 epoch_loss += loss.item()
                 progress_bar.update(1)

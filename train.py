@@ -12,51 +12,45 @@ from network import PilotNet
 from trainer import Trainer
 
 
-def train_model(model_name, dataset_folder, input_modality, lidar_channel, output_modality,
-                wandb_project, max_epochs, patience,
-                learning_rate, weight_decay, filter_blinker_turns, batch_size, num_workers):
-    train_loader, valid_loader = load_data(dataset_folder, input_modality, lidar_channel, output_modality,
-                                           filter_blinker_turns, batch_size, num_workers)
+def train_model(model_name, dataset_folder, input_modality, lidar_channel, output_modality, conditional_learning,
+                wandb_project, max_epochs, patience, learning_rate, weight_decay, filter_blinker_turns, batch_size,
+                num_workers):
 
     print(f"Training model {model_name}, wandb_project={wandb_project}")
-    if output_modality == "waypoints":
-        n_outputs = 10
-    else:
-        n_outputs = 1
 
-    if lidar_channel:
-        model = PilotNet(n_input_channels=1, n_outputs=n_outputs)
-    else:
-        model = PilotNet(n_input_channels=3, n_outputs=n_outputs)
+    n_input_channels = 1 if lidar_channel else 3
+    n_outputs = 10 if output_modality == "waypoints" else 1
+    n_branches = 3 if conditional_learning else 1
 
+    train_loader, valid_loader = load_data(dataset_folder, input_modality, lidar_channel, output_modality, n_branches,
+                                           filter_blinker_turns, batch_size, num_workers)
+
+    model = PilotNet(n_input_channels, n_outputs, n_branches)
     criterion = nn.L1Loss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.999),
                                   eps=1e-08, weight_decay=weight_decay, amsgrad=False)
 
+    # todo: move this to trainer
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     criterion = criterion.to(device)
 
-    if input_modality == "ouster-lidar":
-        fps = 10
-    else:
-        fps = 30
-
-    trainer = Trainer(model_name, wandb_project=wandb_project, target_name=output_modality)
+    fps = 10 if input_modality == "ouster-lidar" else 30
+    trainer = Trainer(model_name, output_modality, n_branches, wandb_project)
     trainer.train(model, train_loader, valid_loader, optimizer, criterion, max_epochs, patience, fps)
 
 
-def load_data(dataset_folder, input_modality, lidar_channel, output_modality,
+def load_data(dataset_folder, input_modality, lidar_channel, output_modality, n_branches,
               filter_blinker_turns, batch_size, num_workers):
     print(f"Reading {input_modality} data from {dataset_folder}, lidar_channel={lidar_channel}, "
           f"output_modality={output_modality}, filter_blinker_turns={filter_blinker_turns}")
     dataset_path = Path(dataset_folder)
     if input_modality == "nvidia-camera":
-        trainset = NvidiaTrainDataset(dataset_path, filter_turns=filter_blinker_turns, output_modality=output_modality)
-        validset = NvidiaValidationDataset(dataset_path, filter_turns=filter_blinker_turns, output_modality=output_modality)
+        trainset = NvidiaTrainDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
+        validset = NvidiaValidationDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
     elif input_modality == "ouster-lidar":
-        trainset = OusterTrainDataset(dataset_path, filter_turns=filter_blinker_turns, channel=lidar_channel)
-        validset = OusterValidationDataset(dataset_path, filter_turns=filter_blinker_turns, channel=lidar_channel)
+        trainset = OusterTrainDataset(dataset_path, filter_blinker_turns, output_modality)
+        validset = OusterValidationDataset(dataset_path, filter_blinker_turns, output_modality)
     else:
         print("Uknown input modality")
         sys.exit()
@@ -166,12 +160,20 @@ if __name__ == "__main__":
         help='Weight decay used in training.'
     )
 
+    argparser.add_argument(
+        '--conditional-learning',
+        default=False,
+        action='store_true',
+        help="When true, network is trained with conditional branches using turn blinkers."
+    )
+
     args = argparser.parse_args()
     train_model(args.model_name,
                 args.dataset_folder,
                 args.input_modality,
                 args.lidar_channel,
                 args.output_modality,
+                args.conditional_learning,
                 args.wandb_project,
                 args.max_epochs,
                 args.patience,
