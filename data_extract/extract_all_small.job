@@ -4,8 +4,30 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=0-56
+#SBATCH --array=0-21
 BAGS=(
+    '2022-01-14-10-05-16_e2e_rec_raanitsa_forward.bag' \
+    '2022-01-14-10-50-05_e2e_rec_raanitsa_backward.bag' \
+    '2022-01-14-11-54-33_e2e_rec_kambja_forward2.bag' \
+    '2022-01-14-12-21-40_e2e_rec_kambja_forward2_continue.bag' \
+    '2022-01-14-12-35-13_e2e_rec_neeruti_forward.bag' \
+    '2022-01-14-12-45-51_e2e_rec_neeruti_backward.bag' \
+    '2022-01-14-13-09-05_e2e_rec_kambja_backward.bag' \
+    '2022-01-14-13-18-36_e2e_rec_kambja_backward_continue.bag' \
+    '2022-01-18-11-19-26_e2e_rec_elva_forward.bag' \
+    '2022-01-18-11-36-48_e2e_rec_elva_backward.bag' \
+    '2022-01-18-12-37-01_e2e_rec_arula_forward.bag' \
+    '2022-01-18-12-47-32_e2e_rec_arula_forward_continue.bag' \
+    '2022-01-18-13-03-03_e2e_rec_arula_backward.bag' \
+    '2022-01-18-13-43-33_e2e_rec_otepaa_forward.bag' \
+    '2022-01-18-13-52-35_e2e_rec_otepaa_forward.bag' \
+    '2022-01-18-13-56-22_e2e_rec_otepaa_forward.bag' \
+    '2022-01-18-14-12-14_e2e_rec_otepaa_backward.bag' \
+    '2022-01-18-14-50-24_e2e_rec_vastse_forward.bag' \
+    '2022-01-18-14-57-04_e2e_rec_vastse_forward.bag' \
+    '2022-01-18-15-19-56_e2e_rec_kanepi_forward.bag' \
+    '2022-01-18-15-20-35_e2e_rec_kanepi_forward.bag' \
+    '2022-01-18-15-49-26_e2e_rec_kanepi_backwards.bag' \
     '2021-05-20-12-36-10_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-43-17_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-51-29_e2e_sulaoja_20_30.bag' \
