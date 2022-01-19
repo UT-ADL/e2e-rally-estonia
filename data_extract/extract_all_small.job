@@ -4,10 +4,10 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=0-1
+#SBATCH --array=1
 BAGS=(
     '2021-11-08-11-24-44_e2e_rec_ss12_raanitsa.bag' \
-    '2021-11-08-12-08-40_e2e_rec_ss12_raanitsa_backward' \
+    '2021-11-08-12-08-40_e2e_rec_ss12_raanitsa_backward.bag' \
     '2022-01-14-10-05-16_e2e_rec_raanitsa_forward.bag' \
     '2022-01-14-10-50-05_e2e_rec_raanitsa_backward.bag' \
     '2022-01-14-11-54-33_e2e_rec_kambja_forward2.bag' \
