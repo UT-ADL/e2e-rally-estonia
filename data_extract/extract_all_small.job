@@ -6,6 +6,12 @@
 
 #SBATCH --array=1
 BAGS=(
+    '2022-01-25-15-25-15_e2e_rec_vahi_forward.bag' \
+    '2022-01-25-15-34-01_e2e_rec_vahi_backwards.bag' \
+    '2022-01-28-10-21-14_e2e_rec_peipsiaare_forward.bag' \
+    '2022-01-28-12-46-59_e2e_rec_peipsiaare_backward.bag' \
+    '2022-01-28-14-47-23_e2e_rec_elva_forward.bag' \
+    '2022-01-28-15-09-01_e2e_rec_elva_backward.bag' \
     '2021-11-08-11-24-44_e2e_rec_ss12_raanitsa.bag' \
     '2021-11-08-12-08-40_e2e_rec_ss12_raanitsa_backward.bag' \
     '2022-01-14-10-05-16_e2e_rec_raanitsa_forward.bag' \
