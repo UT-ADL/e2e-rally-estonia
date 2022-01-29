@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=1
+#SBATCH --array=0-5
 BAGS=(
     '2022-01-25-15-25-15_e2e_rec_vahi_forward.bag' \
     '2022-01-25-15-34-01_e2e_rec_vahi_backwards.bag' \
