@@ -21,7 +21,7 @@ from velocity_model.velocity_model import VelocityModel
 
 def create_driving_video(dataset_folder, output_modality):
     dataset_path = Path(dataset_folder)
-    dataset = NvidiaDataset([dataset_path], camera="front_wide", output_modality=output_modality)
+    dataset = NvidiaDataset([dataset_path], camera="front_wide", output_modality=output_modality, n_branches=3)
 
     temp_frames_folder = dataset_path / 'temp'
     shutil.rmtree(temp_frames_folder, ignore_errors=True)
@@ -37,7 +37,7 @@ def create_driving_video(dataset_folder, output_modality):
 
 def create_prediction_video(dataset_folder, output_modality, model_path):
     dataset_path = Path(dataset_folder)
-    dataset = NvidiaDataset([dataset_path], name=dataset_path.name, output_modality=output_modality)
+    dataset = NvidiaDataset([dataset_path], name=dataset_path.name, output_modality=output_modality, n_branches=3)
 
     temp_frames_folder = dataset_path / 'temp'
     shutil.rmtree(temp_frames_folder, ignore_errors=True)
@@ -71,7 +71,7 @@ def get_steering_predictions(dataset_path, model_path):
     model.eval()
 
     tr = transforms.Compose([NvidiaCropWide(), Normalize()])
-    dataset = NvidiaDataset([dataset_path], tr, name=dataset_path.name)
+    dataset = NvidiaDataset([dataset_path], tr, name=dataset_path.name, n_branches=3)
     validloader_tr = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False,
                                          num_workers=16, pin_memory=True, persistent_workers=True)
     steering_predictions = trainer.predict(model, validloader_tr)
@@ -89,7 +89,7 @@ def get_trajectory_predictions(dataset_path, model_path):
     model.eval()
 
     tr = transforms.Compose([NvidiaCropWide(), Normalize()])
-    dataset = NvidiaDataset([dataset_path], tr, name=dataset_path.name, output_modality="waypoints")
+    dataset = NvidiaDataset([dataset_path], tr, name=dataset_path.name, output_modality="waypoints", n_branches=3)
     validloader_tr = torch.utils.data.DataLoader(dataset, batch_size=512, shuffle=False,
                                          num_workers=16, pin_memory=True, persistent_workers=True)
     waypoints = trainer.predict(model, validloader_tr)

@@ -19,7 +19,7 @@ class Trainer:
 
         if wandb_project:
             self.wandb_logging = True
-            wandb.init(project="nvidia-e2e-tests")
+            wandb.init(project=wandb_project)
 
         if model_name:
             datetime_prefix = datetime.today().strftime('%Y%m%d%H%M%S')
@@ -62,7 +62,7 @@ class Trainer:
 
         self.save_models(model, valid_loader)
 
-        if self.target_name == "steering":
+        if self.target_name == "steering_angle":
             model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
             model.to(self.device)
             self.calculate_metrics(fps, model, valid_loader)
@@ -91,7 +91,7 @@ class Trainer:
         model.to(self.device)
 
         data = iter(valid_loader).next()
-        sample_inputs = data['image'].to(self.device)
+        sample_inputs = data[0]['image'].to(self.device)
 
         torch.onnx.export(model, sample_inputs, f"{self.save_dir}/best.onnx")
         onnx.checker.check_model(f"{self.save_dir}/best.onnx")
@@ -139,7 +139,6 @@ class Trainer:
             progress_bar = tqdm(total=len(dataloader), smoothing=0)
             for i, (data, target_values, condition_mask) in enumerate(dataloader):
                 inputs = data['image'].to(self.device)
-                condition_mask = condition_mask.to(self.device)
                 predictions = model(inputs)
 
                 masked_predictions = predictions[condition_mask == 1]
