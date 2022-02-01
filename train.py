@@ -6,7 +6,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import ConcatDataset
 
-from dataloading.nvidia import NvidiaTrainDataset, NvidiaValidationDataset
+from dataloading.nvidia import NvidiaTrainDataset, NvidiaValidationDataset, NvidiaWinterTrainDataset, \
+    NvidiaWinterValidationDataset, NvidiaAllTrainDataset, NvidiaAllValidationDataset
 from dataloading.ouster import OusterTrainDataset, OusterValidationDataset
 from network import PilotNet
 from trainer import Trainer
@@ -48,6 +49,12 @@ def load_data(dataset_folder, input_modality, lidar_channel, output_modality, n_
     if input_modality == "nvidia-camera":
         trainset = NvidiaTrainDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
         validset = NvidiaValidationDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
+    elif input_modality == "nvidia-camera-winter":
+        trainset = NvidiaWinterTrainDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
+        validset = NvidiaWinterValidationDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
+    elif input_modality == "nvidia-camera-all":
+        trainset = NvidiaAllTrainDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
+        validset = NvidiaAllValidationDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
     elif input_modality == "ouster-lidar":
         trainset = OusterTrainDataset(dataset_path, filter_blinker_turns, output_modality)
         validset = OusterValidationDataset(dataset_path, filter_blinker_turns, output_modality)
@@ -80,7 +87,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '--input-modality',
         required=True,
-        choices=['nvidia-camera', 'ouster-lidar'],
+        choices=['nvidia-camera', 'nvidia-camera-winter', 'nvidia-camera-all', 'ouster-lidar'],
     )
 
     argparser.add_argument(
