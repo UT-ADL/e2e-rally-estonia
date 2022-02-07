@@ -7,5 +7,5 @@ python metrics.py --input-modality ouster-lidar --drive-datasets 2022-02-02-10-3
 echo "Lidar Winter v3"
 python metrics.py --input-modality ouster-lidar --drive-datasets 2022-02-02-11-05-18_e2e_rec_elva_winter_lidar-v5_forw_08 2022-02-02-10-53-16_e2e_rec_elva_winter_lidar_backw_08
 echo "Camera Winter v3"
-python metrics.py --input-modality ouster-lidar --drive-datasets 2022-02-02-11-58-48_e2e_rec_elva_winter_camera-v3_forw_08'
+python metrics.py --input-modality ouster-lidar --drive-datasets 2022-02-02-11-58-48_e2e_rec_elva_winter_camera-v3_forw_08
 
