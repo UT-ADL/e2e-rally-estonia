@@ -8,6 +8,7 @@ class PilotNet(nn.Module):
         super(PilotNet, self).__init__()
 
         self.features = nn.Sequential(
+            nn.BatchNorm2d(3),
             nn.Conv2d(n_input_channels, 24, 5, stride=2),
             nn.BatchNorm2d(24),
             nn.LeakyReLU(),
