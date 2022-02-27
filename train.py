@@ -2,77 +2,128 @@ import argparse
 import sys
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-from torch.utils.data import ConcatDataset
+from torch.utils.data import ConcatDataset, WeightedRandomSampler
 
 from dataloading.nvidia import NvidiaTrainDataset, NvidiaValidationDataset, NvidiaWinterTrainDataset, \
-    NvidiaWinterValidationDataset, NvidiaAllTrainDataset, NvidiaAllValidationDataset
+    NvidiaWinterValidationDataset, NvidiaAllTrainDataset, NvidiaAllValidationDataset, AugmentationConfig
 from dataloading.ouster import OusterTrainDataset, OusterValidationDataset
 from network import PilotNet
 from trainer import Trainer
 
 
-def train_model(model_name, dataset_folder, input_modality, lidar_channel, output_modality, conditional_learning,
-                wandb_project, max_epochs, patience, learning_rate, weight_decay, filter_blinker_turns, batch_size,
-                num_workers):
+class TrainingConfig:
+    def __init__(self, dataset_folder, input_modality, lidar_channel, output_modality, conditional_learning,
+                 learning_rate, weight_decay, patience, max_epochs, batch_size, batch_sampler, num_workers,
+                 wandb_project):
+        self.dataset_folder = dataset_folder
+        self.input_modality = input_modality
+        self.lidar_channel = lidar_channel
+        self.output_modality = output_modality
+        self.conditional_learning = conditional_learning
+        self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.patience = patience
+        self.max_epochs = max_epochs
+        self.batch_size = batch_size
+        self.batch_sampler = batch_sampler
+        self.num_workers = num_workers
+        self.wandb_project = wandb_project
 
-    print(f"Training model {model_name}, wandb_project={wandb_project}")
+        self.n_input_channels = 1 if self.lidar_channel else 3
+        self.n_outputs = 10 if self.output_modality == "waypoints" else 1
+        self.n_branches = 3 if self.conditional_learning else 1
+        self.fps = 10 if self.input_modality == "ouster-lidar" else 30
 
-    n_input_channels = 1 if lidar_channel else 3
-    n_outputs = 10 if output_modality == "waypoints" else 1
-    n_branches = 3 if conditional_learning else 1
+def train_model(model_name, train_conf, augment_conf):
 
-    train_loader, valid_loader = load_data(dataset_folder, input_modality, lidar_channel, output_modality, n_branches,
-                                           filter_blinker_turns, batch_size, num_workers)
+    print(f"Training model {model_name}, wandb_project={train_conf.wandb_project}")
 
-    model = PilotNet(n_input_channels, n_outputs, n_branches)
+    train_loader, valid_loader = load_data(train_conf, augment_conf)
+
+    model = PilotNet(train_conf.n_input_channels, train_conf.n_outputs, train_conf.n_branches)
     criterion = nn.L1Loss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, betas=(0.9, 0.999),
-                                  eps=1e-08, weight_decay=weight_decay, amsgrad=False)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=train_conf.learning_rate, betas=(0.9, 0.999),
+                                  eps=1e-08, weight_decay=train_conf.weight_decay, amsgrad=False)
 
     # todo: move this to trainer
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     criterion = criterion.to(device)
 
-    fps = 10 if input_modality == "ouster-lidar" else 30
-    trainer = Trainer(model_name, output_modality, n_branches, wandb_project)
-    trainer.train(model, train_loader, valid_loader, optimizer, criterion, max_epochs, patience, fps)
+    trainer = Trainer(model_name, train_conf.output_modality, train_conf.n_branches, train_conf.wandb_project)
+    trainer.train(model, train_loader, valid_loader, optimizer, criterion,
+                  train_conf.max_epochs, train_conf.patience, train_conf.fps)
 
 
-def load_data(dataset_folder, input_modality, lidar_channel, output_modality, n_branches,
-              filter_blinker_turns, batch_size, num_workers):
-    print(f"Reading {input_modality} data from {dataset_folder}, lidar_channel={lidar_channel}, "
-          f"output_modality={output_modality}, filter_blinker_turns={filter_blinker_turns}")
-    dataset_path = Path(dataset_folder)
-    if input_modality == "nvidia-camera":
-        trainset = NvidiaTrainDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
-        validset = NvidiaValidationDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
-    elif input_modality == "nvidia-camera-winter":
-        trainset = NvidiaWinterTrainDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
-        validset = NvidiaWinterValidationDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
-    elif input_modality == "nvidia-camera-all":
-        trainset = NvidiaAllTrainDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
-        validset = NvidiaAllValidationDataset(dataset_path, filter_blinker_turns, output_modality, n_branches)
-    elif input_modality == "ouster-lidar":
-        trainset = OusterTrainDataset(dataset_path, filter_blinker_turns, output_modality)
-        validset = OusterValidationDataset(dataset_path, filter_blinker_turns, output_modality)
+def load_data(train_conf, augment_conf):
+    print(f"Reading {train_conf.input_modality} data from {train_conf.dataset_folder}, "
+          f"lidar_channel={train_conf.lidar_channel}, output_modality={train_conf.output_modality}")
+
+    dataset_path = Path(train_conf.dataset_folder)
+    if train_conf.input_modality == "nvidia-camera":
+        trainset = NvidiaTrainDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
+        validset = NvidiaValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
+    elif train_conf.input_modality == "nvidia-camera-winter":
+        trainset = NvidiaWinterTrainDataset(dataset_path, train_conf.output_modality,
+                                            train_conf.n_branches, augment_conf)
+        validset = NvidiaWinterValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
+    elif train_conf.input_modality == "nvidia-camera-all":
+        trainset = NvidiaAllTrainDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
+        validset = NvidiaAllValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
+    elif train_conf.input_modality == "ouster-lidar":
+        trainset = OusterTrainDataset(dataset_path, train_conf.output_modality)
+        validset = OusterValidationDataset(dataset_path, train_conf.output_modality)
     else:
-        print("Uknown input modality")
+        print(f"Uknown input modality {train_conf.input_modality}")
         sys.exit()
 
     print(f"Training data has {len(trainset.frames)} frames")
     print(f"Validation data has {len(validset.frames)} frames")
-    print(f"Creating {num_workers} workers with batch size {batch_size}")
+    print(f"Creating {train_conf.num_workers} workers with batch size {train_conf.batch_size} using {train_conf.batch_sampler} sampler.")
 
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True,
-                                               num_workers=num_workers, pin_memory=True, persistent_workers=True)
+    if train_conf.batch_sampler == 'weighted':
+        weights = calculate_weights(trainset.frames)
+        sampler = WeightedRandomSampler(weights, num_samples=len(trainset), replacement=True)
 
-    valid_loader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=False,
-                                               num_workers=num_workers, pin_memory=True, persistent_workers=True)
+        train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=False,
+                                                   sampler=sampler, num_workers=train_conf.num_workers,
+                                                   pin_memory=True, persistent_workers=True)
+    elif train_conf.batch_sampler == 'random':
+        train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=True,
+                                                   num_workers=train_conf.num_workers, pin_memory=True,
+                                             persistent_workers=True)
+    else:
+        print(f"Unknown batch sampler {train_conf.batch_sampler}")
+        sys.exit()
+
+    valid_loader = torch.utils.data.DataLoader(validset, batch_size=train_conf.batch_size, shuffle=False,
+                                               num_workers=train_conf.num_workers, pin_memory=True,
+                                               persistent_workers=True)
 
     return train_loader, valid_loader
+
+
+def calculate_weights(df):
+    optimized_bins = np.array([-8.81234893e+00, -2.78245811e+00, -1.02905812e+00, -4.43559368e-01,
+                               -1.64549582e-01, 6.90239861e-03, 1.69872354e-01, 4.35963640e-01,
+                               9.63913148e-01, 2.70831896e+00, 8.57767303e+00])
+
+    bin_ranges = pd.cut(df["steering_angle"], optimized_bins, labels=np.arange(1, 11))
+    df["bins"] = bin_ranges
+    counts = bin_ranges.value_counts(sort=False)
+    widths = np.diff(optimized_bins)
+    weights = (widths / counts) * sum(counts) / sum(widths)
+
+    weights_df = pd.DataFrame(data=weights)
+    weights_df.reset_index(inplace=True)
+    weights_df.columns = ["bins", "weight"]
+    weights_df.set_index('bins', inplace=True)
+    df = df.join(weights_df, on="bins")
+    return df["weight"].to_numpy()
 
 
 if __name__ == "__main__":
@@ -161,6 +212,14 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
+        '--batch-sampler',
+        required=False,
+        choices=['weighted', 'random'],
+        default='weighted',
+        help='Sampler used for creating batches for training.'
+    )
+
+    argparser.add_argument(
         '--num-workers',
         type=int,
         default=16,
@@ -174,18 +233,31 @@ if __name__ == "__main__":
         help="When true, network is trained with conditional branches using turn blinkers."
     )
 
+    argparser.add_argument(
+        '--aug-color-prob',
+        type=float,
+        default=0.0,
+        help='Probability of augmenting input image color by changing brightness, saturation and contrast.'
+    )
+
+    argparser.add_argument(
+        '--aug-noise-prob',
+        type=float,
+        default=0.0,
+        help='Probability of augmenting input image with noise.'
+    )
+
+    argparser.add_argument(
+        '--aug-blur-prob',
+        type=float,
+        default=0.0,
+        help='Probability of augmenting input image by blurring it.'
+    )
+
     args = argparser.parse_args()
-    train_model(args.model_name,
-                args.dataset_folder,
-                args.input_modality,
-                args.lidar_channel,
-                args.output_modality,
-                args.conditional_learning,
-                args.wandb_project,
-                args.max_epochs,
-                args.patience,
-                args.learning_rate,
-                args.weight_decay,
-                args.filter_blinker_turns,
-                args.batch_size,
-                args.num_workers)
+    train_config = TrainingConfig(args.dataset_folder, args.input_modality, args.lidar_channel,
+                                  args.output_modality, args.conditional_learning, args.learning_rate,
+                                  args.weight_decay, args.patience, args.max_epochs,
+                                  args.batch_size, args.batch_sampler, args.num_workers, args.wandb_project)
+    aug_config = AugmentationConfig(args.aug_color_prob, args.aug_noise_prob, args.aug_blur_prob)
+    train_model(args.model_name, train_config, aug_config)

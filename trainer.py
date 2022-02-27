@@ -1,13 +1,13 @@
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import onnx
 import torch
 import wandb
 from tqdm.auto import tqdm
 
-from metrics.metrics import calculate_open_loop_metrics
-
+from metrics.metrics import calculate_open_loop_metrics, calculate_whiteness
 
 class Trainer:
 
@@ -42,19 +42,28 @@ class Trainer:
             train_loss = self.train_epoch(model, train_loader, optimizer, criterion, progress_bar, epoch)
 
             progress_bar.reset(total=len(valid_loader))
-            valid_loss = self.evaluate(model, valid_loader, criterion, progress_bar, epoch, train_loss)
+            valid_loss, predictions = self.evaluate(model, valid_loader, criterion, progress_bar, epoch, train_loss)
+
+            predictions_degrees = np.array(predictions) / np.pi * 180
+            whiteness = calculate_whiteness(predictions_degrees, fps)
 
             if valid_loss < best_valid_loss:
-                progress_bar.set_description(f'*epoch {epoch + 1} | train loss: {train_loss:.4f} | valid loss: {valid_loss:.4f}')
                 best_valid_loss = valid_loss
 
                 torch.save(model.state_dict(), self.save_dir / "best.pt")
                 epochs_of_no_improve = 0
+                best_loss_marker = '*'
             else:
                 epochs_of_no_improve += 1
+                best_loss_marker = ''
+
+            progress_bar.set_description(f'{best_loss_marker}epoch {epoch + 1} |'
+                                         f' train loss: {train_loss:.4f} '
+                                         f'| valid loss: {valid_loss:.4f} '
+                                         f'| whiteness: {whiteness:4f}')
 
             if self.wandb_logging:
-                wandb.log({"epoch": epoch + 1, "train_loss": train_loss, "val_los": valid_loss})
+                wandb.log({"epoch": epoch + 1, "train_loss": train_loss, "val_los": valid_loss, "whiteness": whiteness})
 
             if epochs_of_no_improve == patience:
                 print(f'Early stopping, on epoch: {epoch + 1}.')
@@ -62,11 +71,11 @@ class Trainer:
 
         self.save_models(model, valid_loader)
 
-        if self.target_name == "steering_angle":
-            model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
-            model.to(self.device)
-            self.calculate_metrics(fps, model, valid_loader)
-        # todo: calculate metrics for waypoints
+        # if self.target_name == "steering_angle":
+        #     model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
+        #     model.to(self.device)
+        #     self.calculate_metrics(fps, model, valid_loader)
+        # # todo: calculate metrics for waypoints
 
         return best_valid_loss
 
@@ -154,6 +163,8 @@ class Trainer:
 
         model.eval()
 
+        all_predictions = []
+
         with torch.no_grad():
             for i, (data, target_values, condition_mask) in enumerate(iterator):
                 inputs = data['image'].to(self.device)
@@ -162,10 +173,15 @@ class Trainer:
 
                 predictions = model(inputs)
                 loss = criterion(predictions*condition_mask, target_values) * self.n_conditional_branches
-
                 epoch_loss += loss.item()
+
+                masked_predictions = predictions[condition_mask == 1]
+                masked_predictions = masked_predictions.reshape(predictions.shape[0], -1)
+
+                all_predictions.extend(masked_predictions.cpu().numpy())
+
                 progress_bar.update(1)
                 progress_bar.set_description(f'epoch {epoch + 1} | train loss: {train_loss:.4f} | valid loss: {(epoch_loss / (i + 1)):.4f}')
 
         total_loss = epoch_loss / len(iterator)
-        return total_loss
+        return total_loss, all_predictions

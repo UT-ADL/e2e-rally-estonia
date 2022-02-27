@@ -1,9 +1,13 @@
 import numpy as np
 import pandas as pd
+import torch
 
 from torch.utils.data import Dataset
 import torchvision
 from torchvision import transforms
+import torchvision.transforms.functional as F
+
+from skimage.util import random_noise
 
 
 class NvidiaResizeAndCrop(object):
@@ -39,7 +43,7 @@ class NvidiaCropWide(object):
 
         height = ymax - ymin
         width = xmax - xmin
-        cropped = transforms.functional.resized_crop(data["image"], ymin, xmin + self.x_delta, height, width,
+        cropped = F.resized_crop(data["image"], ymin, xmin + self.x_delta, height, width,
                                                      (int(scale * height), int(scale * width)))
 
         data["image"] = cropped
@@ -58,7 +62,7 @@ class CropViT(object):
 
         height = ymax - ymin
         width = xmax - xmin
-        cropped = transforms.functional.resized_crop(data["image"], ymin, xmin, height, width,
+        cropped = F.resized_crop(data["image"], ymin, xmin, height, width,
                                                      (int(scale * height), int(scale * width)))
         data["image"] = cropped
         return data
@@ -79,12 +83,45 @@ class NvidiaSideCameraZoom(object):
         scaled_width = width - (2 * xmin)
         scaled_height = height - (2 * ymin)
 
-        cropped = transforms.functional.resized_crop(data["image"], ymin, xmin, scaled_height, scaled_width,
+        cropped = F.resized_crop(data["image"], ymin, xmin, scaled_height, scaled_width,
                                                      (height, width))
 
         data["image"] = cropped
         return data
 
+
+class AugmentationConfig:
+    def __init__(self, color_prob=0.0, noise_prob=0.0, blur_prob=0.0):
+        self.color_prob = color_prob
+        self.noise_prob = noise_prob
+        self.blur_prob = blur_prob
+
+
+class AugmentImage:
+    def __init__(self, augment_config):
+        print(f"augmentation: color_prob={augment_config.color_prob}, "
+              f"noise_prob={augment_config.noise_prob}, "
+              f"blur_prob={augment_config.blur_prob}")
+        self.augment_config = augment_config
+
+    def __call__(self, data):
+        if np.random.random() <= self.augment_config.color_prob:
+            jitter = transforms.ColorJitter(contrast=0.5, saturation=0.5, brightness=0.5)
+            data["image"] = jitter(data["image"])
+
+        if np.random.random() <= self.augment_config.noise_prob:
+            if np.random.random() > 0.5:
+                data["image"] = torch.tensor(random_noise(data["image"], mode='gaussian', mean=0, var=0.005, clip=True),
+                                             dtype=torch.float)
+            else:
+                data["image"] = torch.tensor(random_noise(data["image"], mode='salt', amount=0.005),
+                                             dtype=torch.float)
+
+        if np.random.random() <= self.augment_config.blur_prob:
+            blurrer = transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.3, 1))
+            data["image"] = blurrer(data['image'])
+
+        return data
 
 class Normalize(object):
     def __call__(self, data, transform=None):
@@ -226,7 +263,7 @@ class NvidiaDataset(Dataset):
 
 
 class NvidiaTrainDataset(NvidiaDataset):
-    def __init__(self, root_path, filter_turns=False, output_modality="steering", n_branches=3):
+    def __init__(self, root_path, output_modality="steering", n_branches=3):
         train_paths = [
             root_path / "2021-05-20-12-36-10_e2e_sulaoja_20_30",
             root_path / "2021-05-20-12-43-17_e2e_sulaoja_20_30",
@@ -279,13 +316,12 @@ class NvidiaTrainDataset(NvidiaDataset):
             ]
 
         tr = transforms.Compose([Normalize()])
-
-        super().__init__(train_paths, tr, filter_turns=filter_turns, output_modality=output_modality, n_branches=n_branches)
+        super().__init__(train_paths, tr, output_modality=output_modality, n_branches=n_branches)
 
 
 class NvidiaValidationDataset(NvidiaDataset):
     # todo: remove default parameters
-    def __init__(self, root_path, filter_turns=False, output_modality="steering", n_branches=3):
+    def __init__(self, root_path, output_modality="steering", n_branches=3):
         valid_paths = [
             root_path / "2021-05-28-15-19-48_e2e_sulaoja_20_30",
             root_path / "2021-06-07-14-20-07_e2e_rec_ss6",
@@ -301,10 +337,12 @@ class NvidiaValidationDataset(NvidiaDataset):
         ]
 
         tr = transforms.Compose([Normalize()])
-        super().__init__(valid_paths, tr, filter_turns=filter_turns, output_modality=output_modality, n_branches=n_branches)
+        super().__init__(valid_paths, tr, output_modality=output_modality, n_branches=n_branches)
+
 
 class NvidiaWinterTrainDataset(NvidiaDataset):
-    def __init__(self, root_path, filter_turns=False, output_modality="steering", n_branches=3):
+    def __init__(self, root_path, output_modality="steering",
+                 n_branches=3, augment_conf=AugmentationConfig()):
         train_paths = [
 
             root_path / "2022-01-28-10-21-14_e2e_rec_peipsiaare_forward",
@@ -326,12 +364,12 @@ class NvidiaWinterTrainDataset(NvidiaDataset):
             root_path / "2022-01-18-15-49-26_e2e_rec_kanepi_backwards",
         ]
 
-        tr = transforms.Compose([Normalize()])
+        tr = transforms.Compose([AugmentImage(augment_config=augment_conf), Normalize()])
+        super().__init__(train_paths, tr, output_modality=output_modality, n_branches=n_branches)
 
-        super().__init__(train_paths, tr, filter_turns=filter_turns, output_modality=output_modality, n_branches=n_branches)
 
 class NvidiaWinterValidationDataset(NvidiaDataset):
-    def __init__(self, root_path, filter_turns=False, output_modality="steering", n_branches=3):
+    def __init__(self, root_path, output_modality="steering", n_branches=3):
         valid_paths = [
             root_path / "2022-01-18-12-37-01_e2e_rec_arula_forward",
             root_path / "2022-01-18-12-47-32_e2e_rec_arula_forward_continue",
@@ -342,11 +380,11 @@ class NvidiaWinterValidationDataset(NvidiaDataset):
         ]
 
         tr = transforms.Compose([Normalize()])
-        super().__init__(valid_paths, tr, filter_turns=filter_turns, output_modality=output_modality, n_branches=n_branches)
+        super().__init__(valid_paths, tr, output_modality=output_modality, n_branches=n_branches)
 
 
 class NvidiaAllTrainDataset(NvidiaDataset):
-    def __init__(self, root_path, filter_turns=False, output_modality="steering", n_branches=3):
+    def __init__(self, root_path, output_modality="steering", n_branches=3):
         train_paths = [
             root_path / "2021-05-20-12-36-10_e2e_sulaoja_20_30",
             root_path / "2021-05-20-12-43-17_e2e_sulaoja_20_30",
@@ -414,11 +452,11 @@ class NvidiaAllTrainDataset(NvidiaDataset):
 
         tr = transforms.Compose([Normalize()])
 
-        super().__init__(train_paths, tr, filter_turns=filter_turns, output_modality=output_modality, n_branches=n_branches)
+        super().__init__(train_paths, tr, output_modality=output_modality, n_branches=n_branches)
 
 
 class NvidiaAllValidationDataset(NvidiaDataset):
-    def __init__(self, root_path, filter_turns=False, output_modality="steering", n_branches=3):
+    def __init__(self, root_path, output_modality="steering", n_branches=3):
         valid_paths = [
             root_path / "2021-05-28-15-19-48_e2e_sulaoja_20_30",
             root_path / "2021-06-07-14-20-07_e2e_rec_ss6",
@@ -440,4 +478,4 @@ class NvidiaAllValidationDataset(NvidiaDataset):
         ]
 
         tr = transforms.Compose([Normalize()])
-        super().__init__(valid_paths, tr, filter_turns=filter_turns, output_modality=output_modality, n_branches=n_branches)
+        super().__init__(valid_paths, tr, output_modality=output_modality, n_branches=n_branches)
