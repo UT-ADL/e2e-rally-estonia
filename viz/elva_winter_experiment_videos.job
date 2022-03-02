@@ -19,6 +19,6 @@ DATASETS=(
 
 module load any/python/3.8.3-conda
 source activate ros2
-cd /gpfs/space/home/rometaid/nvidia-e2e/data_extract
+cd /gpfs/space/home/rometaid/nvidia-e2e/viz
 
 srun ./create_driving_video.sh ${DATASETS[$SLURM_ARRAY_TASK_ID]}
