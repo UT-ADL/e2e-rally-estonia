@@ -228,7 +228,7 @@ def draw_driving_frames(dataset, temp_frames_folder, output_modality):
     print(f"Drawing driving frames with {output_modality}")
     t = tqdm(enumerate(dataset), total=len(dataset))
     t.set_description(dataset.name)
-    for frame_index, data in t:
+    for frame_index, (data, target_values, condition_mask)  in t:
 
         frame = data["image"].permute(1, 2, 0).cpu().numpy()
         true_angle = math.degrees(data["steering_angle"])
