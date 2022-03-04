@@ -12,7 +12,11 @@ from dataloading.nvidia import NvidiaDataset
 from dataloading.ouster import OusterDataset
 from network import PilotNet, PilotNetOld
 
-
+"""
+Adapted from:
+https://github.com/javangent/ouster-e2e/blob/4bfafaf764de85f87ac4a4d71d21fbf9a333790f/visual_backprop.py
+https://github.com/mbojarski/VisualBackProp/blob/master/vis.lua
+"""
 def outer_hook(activations):
     def hook(module, inp, out):
         activations.append(out)
