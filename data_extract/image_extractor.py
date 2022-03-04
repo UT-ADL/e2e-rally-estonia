@@ -27,8 +27,9 @@ class NvidiaDriveImporter:
         self.turn_topic = '/pacmod/parsed_tx/turn_rpt'
         self.autonomy_topic = '/pacmod/as_tx/enabled'
         self.current_pose = '/current_pose'
+        self.vehicle_cmd_topic = '/vehicle_cmd'
         self.general_topics = [self.steer_topic, self.speed_topic, self.turn_topic,
-                               self.autonomy_topic, self.current_pose]
+                               self.autonomy_topic, self.current_pose, self.vehicle_cmd_topic]
 
         # NVIDIA images
         # left 120'
@@ -102,6 +103,7 @@ class NvidiaDriveImporter:
         lidar_folder.mkdir(exist_ok=True)
 
         steering_dict = defaultdict(list)
+        vehicle_cmd_dict = defaultdict(list)
         speed_dict = defaultdict(list)
         turn_dict = defaultdict(list)
         camera_dict = defaultdict(list)
@@ -109,7 +111,6 @@ class NvidiaDriveImporter:
         lidar_dict = defaultdict(list)
 
         autonomous = False
-        autonomy_changed = False
 
         oi = OusterImage(0)
         first = True
@@ -132,6 +133,10 @@ class NvidiaDriveImporter:
                 if topic == self.steer_topic:
                     steering_dict["timestamp"].append(msg_timestamp)
                     steering_dict["steering_angle"].append(msg.manual_input)
+
+                elif topic == self.vehicle_cmd_topic:
+                    vehicle_cmd_dict["timestamp"].append(msg_timestamp)
+                    vehicle_cmd_dict["cmd_steering_angle"].append(msg.ctrl_cmd.steering_angle)
 
                 elif topic == self.current_pose:
                     current_pose_dict["timestamp"].append(msg_timestamp)
@@ -206,6 +211,9 @@ class NvidiaDriveImporter:
         steering_df = pd.DataFrame(data=steering_dict, columns=["timestamp", "steering_angle"])
         self.create_timestamp_index(steering_df)
 
+        vehicle_cmd_df = pd.DataFrame(data=vehicle_cmd_dict, columns=["timestamp", "cmd_steering_angle"])
+        self.create_timestamp_index(vehicle_cmd_df)
+
         speed_df = pd.DataFrame(data=speed_dict, columns=["timestamp", "vehicle_speed"])
         self.create_timestamp_index(speed_df)
 
@@ -222,7 +230,7 @@ class NvidiaDriveImporter:
             left_camera_df = self.create_camera_df(camera_df, "left").drop(columns="autonomous")
             right_camera_df = self.create_camera_df(camera_df, "right").drop(columns="autonomous")
             dataframes += [left_camera_df, right_camera_df]
-        dataframes += [steering_df, speed_df, turn_df, current_pose_df]
+        dataframes += [steering_df, vehicle_cmd_df, speed_df, turn_df, current_pose_df]
 
         merged = functools.reduce(lambda left, right:
                                   pd.merge(left, right, how='outer', left_index=True, right_index=True),
