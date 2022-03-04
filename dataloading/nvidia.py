@@ -141,7 +141,10 @@ class NvidiaDataset(Dataset):
                  filter_turns=False, output_modality="steering", n_branches=1):  # TODO: default output modality should be steering_angle, although it is not used here
         self.name = name
         self.dataset_paths = dataset_paths
-        self.transform = transform
+        if transform:
+            self.transform = transform
+        else:
+            self.transform = transforms.Compose([Normalize()])
         self.camera_name = camera
         self.calculate_waypoints = output_modality == "waypoints"
         self.target_size = 2 * self.N_WAYPOINTS if output_modality == "waypoints" else 1

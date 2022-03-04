@@ -8,6 +8,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset
 
 
+
 class OusterCrop(object):
     def __init__(self):
         self.fov = 256
@@ -39,7 +40,10 @@ class OusterDataset(Dataset):
     def __init__(self, dataset_paths, transform=None, filter_turns=False, channel=None):
 
         self.dataset_paths = dataset_paths
-        self.transform = transform
+        if transform:
+            self.transform = transform
+        else:
+            self.transform = transforms.Compose([OusterCrop(), OusterNormalize()])
 
         print(f"Using only lidar channel {channel}")
         self.channel = channel
@@ -68,7 +72,7 @@ class OusterDataset(Dataset):
         if self.transform:
             data = self.transform(data)
 
-        return data
+        return data, "dummy"
 
     def __len__(self):
         return len(self.frames.index)
