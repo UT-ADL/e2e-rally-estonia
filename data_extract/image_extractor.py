@@ -245,7 +245,7 @@ class NvidiaDriveImporter:
 
         merged_lidar = functools.reduce(lambda left, right:
                                         pd.merge(left, right, how='outer', left_index=True, right_index=True),
-                                        [lidar_df, steering_df, speed_df, turn_df, current_pose_df])
+                                        [lidar_df, steering_df, vehicle_cmd_df, speed_df, turn_df, current_pose_df])
         merged_lidar.interpolate(method='time', inplace=True)
 
         filtered_lidar_df = merged_lidar.loc[lidar_df.index]
