@@ -6,15 +6,19 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import BallTree
 
+STEERING_ANGLE_RATIO = 14.7
 
-def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_rate_threshold=1.0,
-                                  only_autonomous=True):
-    model_steering = model_frames.steering_angle.to_numpy() / np.pi * 180
-    true_steering = expert_frames.steering_angle.to_numpy() / np.pi * 180
+def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_rate_threshold=1.0):
 
-    lat_errors = calculate_lateral_errors(model_frames, expert_frames, only_autonomous)
+    lat_errors = calculate_lateral_errors(model_frames, expert_frames, True)
 
+    autonomous_frames = model_frames[model_frames.autonomous].reset_index(drop=True)
+    model_steering = autonomous_frames.steering_angle.to_numpy() / np.pi * 180
+    cmd_model_steering = autonomous_frames.cmd_steering_angle.to_numpy() / np.pi * 180
+    cmd_model_steering = cmd_model_steering * STEERING_ANGLE_RATIO
+    true_steering = autonomous_frames.steering_angle.to_numpy() / np.pi * 180
     whiteness = calculate_whiteness(model_steering, fps)
+    cmd_whiteness = calculate_whiteness(cmd_model_steering, fps)
     expert_whiteness = calculate_whiteness(true_steering, fps)
 
     max = lat_errors.max()
@@ -33,6 +37,7 @@ def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_r
         'distance_per_intervention': distance / interventions,
         'interventions': interventions,
         'whiteness': whiteness,
+        'cmd_whiteness': cmd_whiteness,
         'expert_whiteness': expert_whiteness,
     }
 
@@ -106,10 +111,20 @@ def calculate_distance(frames):
     return np.sum(np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2))
 
 
-def read_frames(dataset_paths, filename):
+# Duplicated with read_frames_driving, should be removed
+# when expert frames are re-extracted and have cmd_steering_angle column
+def read_frames_expert(dataset_paths, filename):
     datasets = [pd.read_csv(dataset_path / filename) for dataset_path in dataset_paths]
     frames_df = pd.concat(datasets)
     frames_df = frames_df[['steering_angle', 'position_x', 'position_y', 'autonomous']].dropna()
+    return frames_df
+
+
+def read_frames_driving(dataset_paths, filename):
+    datasets = [pd.read_csv(dataset_path / filename) for dataset_path in dataset_paths]
+    frames_df = pd.concat(datasets)
+    frames_df = frames_df[['steering_angle', 'cmd_steering_angle', 'position_x', 'position_y', 'autonomous']].dropna()
+
     return frames_df
 
 
@@ -149,9 +164,9 @@ if __name__ == "__main__":
     root_path = Path(args.root_path)
 
     expert_ds = [root_path / dataset_path for dataset_path in args.expert_datasets]
-    expert_frames = read_frames(expert_ds, frames_filename)
+    expert_frames = read_frames_expert(expert_ds, frames_filename)
 
     drive_ds = [root_path / dataset_path for dataset_path in args.drive_datasets]
-    model_frames = read_frames(drive_ds, frames_filename)
+    model_frames = read_frames_driving(drive_ds, frames_filename)
 
     print(calculate_closed_loop_metrics(model_frames, expert_frames, fps=fps))
