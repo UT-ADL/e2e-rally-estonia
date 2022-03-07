@@ -103,12 +103,14 @@ def calculate_interventions(frames):
     frames['autonomous_next'] = frames.shift(-1)['autonomous']
     return len(frames[frames.autonomous & (frames.autonomous_next == False)])
 
+
 def calculate_distance(frames):
     x1 = frames['position_x']
     y1 = frames['position_y']
     x2 = frames.shift(-1)['position_x']
     y2 = frames.shift(-1)['position_y']
-    return np.sum(np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2))
+    frames['distance'] = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    return np.sum(frames[frames["autonomous"]]["distance"])
 
 
 # Duplicated with read_frames_driving, should be removed
