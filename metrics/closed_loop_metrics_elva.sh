@@ -40,6 +40,6 @@ python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-mo
 echo "Lidar Winter v3"
 python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality ouster-lidar --drive-datasets 2022-02-02-11-32-37_e2e_rec_elva_winter_lidar-v3_forw_08 2022-02-02-11-45-34_e2e_rec_elva_winter_lidar-v3_backw_08
 echo "Camera Winter v3"
-python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality ouster-lidar --drive-datasets 2022-02-02-11-58-48_e2e_rec_elva_winter_camera-v3_forw_08
+python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality nvidia-camera --drive-datasets 2022-02-02-11-58-48_e2e_rec_elva_winter_camera-v3_forw_08
 
 
