@@ -1,9 +1,11 @@
 import argparse
+import math
 import sys
 from collections import deque
 from pathlib import Path
 
 import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.transforms.functional as F
@@ -154,6 +156,65 @@ def getImagesFull(model, example):
     fMapsImgM = fMapsImgM[0].permute(1, 2, 0).cpu().numpy()
     return imgOut, fMapsImg, fMapsImgM
 
+
+def draw_steering_angle(frame, steering_angle, steering_wheel_radius, steering_position, size, color):
+    steering_angle_rad = math.radians(steering_angle)
+    x = steering_wheel_radius * np.cos(np.pi / 2 + steering_angle_rad)
+    y = steering_wheel_radius * np.sin(np.pi / 2 + steering_angle_rad)
+    cv2.circle(frame, (steering_position[0] + int(x), steering_position[1] - int(y)), size, color, thickness=-1)
+
+def getImageWithOverlay(model, frame):
+    example = frame["image"].to(device)
+    img = example.cpu().permute(1, 2, 0).detach().numpy()
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    vis = getImagesFull(model, example)[0]
+    result = cv2.vconcat([img, vis])
+
+    scale_percent = 500  # percent of original size
+    width = int(result.shape[1] * scale_percent / 100)
+    height = int(result.shape[0] * scale_percent / 100)
+    dim = (width, height)
+
+    # resize image
+    resized = cv2.resize(result, dim, interpolation=cv2.INTER_AREA)
+
+    steering_angle = math.degrees(frame["steering_angle"])
+    vehicle_speed = frame["vehicle_speed"]
+    turn_signal = int(frame["turn_signal"])
+    cv2.putText(resized, 'True: {:.2f} deg, {:.2f} km/h'.format(steering_angle, vehicle_speed), (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+    pred = model(example.unsqueeze(0)).squeeze(1).cpu().detach().numpy()[0]
+    if len(pred) == 1:
+        pred_steering_angle = math.degrees(pred[0])
+    elif len(pred) == 3:
+        pred_steering_angle = math.degrees(pred[turn_signal])
+    else:
+        print(f"Unknown prediction size: {len(pred)}")
+        sys.exit()
+
+    cv2.putText(resized, 'Pred: {:.2f} deg'.format(pred_steering_angle), (10, 70),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2,
+                cv2.LINE_AA)
+
+    turn_signal_map = {
+        1: "straight",
+        2: "left",
+        0: "right"
+    }
+    cv2.putText(resized, 'turn signal: {}'.format(turn_signal_map.get(turn_signal, "unknown")), (10, 110),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+
+    # draw steering wheel
+    radius = 100
+    steering_pos = (150, 270)
+    cv2.circle(resized, steering_pos, radius, (255, 255, 255), 7)
+    draw_steering_angle(resized, steering_angle, radius, steering_pos, 13, (0, 255, 0))
+    draw_steering_angle(resized, pred_steering_angle, radius, steering_pos, 9, (0, 0, 255))
+
+
+    return resized
+
+
 if __name__ == "__main__":
 
     argparser = argparse.ArgumentParser()
@@ -183,6 +244,14 @@ if __name__ == "__main__":
         default="nvidia-camera",
         choices=['nvidia-camera', 'ouster-lidar'],
     )
+
+    argparser.add_argument(
+        '--conditional-learning',
+        default=False,
+        action='store_true',
+        help="When true, network is trained with conditional branches using turn blinkers."
+    )
+
     args = argparser.parse_args()
 
     root_path = Path("/home/romet/data2/datasets/rally-estonia/dataset-small")
@@ -198,7 +267,8 @@ if __name__ == "__main__":
     if args.model_type == "pilotnet-old":
         model = PilotNetOld()
     elif args.model_type == "pilotnet":
-        model = PilotNet()
+        n_branches = 3 if args.conditional_learning else 1
+        model = PilotNet(n_branches=n_branches)
     else:
         print(f"Unknown model type '{args.model_type}'")
         sys.exit()
@@ -209,22 +279,19 @@ if __name__ == "__main__":
     model.eval()
 
     deq = deque(range(0, len(dataset)))
-    example = dataset[deq[0]][0]["image"].to(device)
-    vis = getImagesFull(model, example)[0]
+    vis = getImageWithOverlay(model, dataset[deq[0]][0])
 
     cv2.namedWindow('vis', cv2.WINDOW_NORMAL)
-    window_scale = 3
-    cv2.resizeWindow('image', window_scale*68, window_scale*264)
+    window_scale = 500
+    cv2.resizeWindow('image', window_scale*2*68, window_scale*264)
 
     while cv2.getWindowProperty('vis', cv2.WND_PROP_VISIBLE) >= 1:
         cv2.imshow('vis', vis)
         k = cv2.waitKey(10)
         if k == ord('j'):
             deq.rotate(1)
-            example = dataset[deq[0]][0]["image"].to(device)
-            vis = getImagesFull(model, example)[0]
+            vis = getImageWithOverlay(model, dataset[deq[0]][0])
         elif k == ord('k'):
             deq.rotate(-1)
-            example = dataset[deq[0]][0]["image"].to(device)
-            vis = getImagesFull(model, example)[0]
+            vis = getImageWithOverlay(model, dataset[deq[0]][0])
 
