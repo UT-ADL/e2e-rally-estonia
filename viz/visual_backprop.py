@@ -163,7 +163,14 @@ def draw_steering_angle(frame, steering_angle, steering_wheel_radius, steering_p
     y = steering_wheel_radius * np.sin(np.pi / 2 + steering_angle_rad)
     cv2.circle(frame, (steering_position[0] + int(x), steering_position[1] - int(y)), size, color, thickness=-1)
 
-def getImageWithOverlay(model, frame):
+def draw_trajectory(frame, waypoints, color):
+    for (x, y) in zip(waypoints[0::2], waypoints[1::2]):
+        x_img = 132 - int(y)
+        y_img = 65 - int(x)
+        wp = (5 * x_img, 5 * y_img)
+        cv2.circle(frame, wp, 2, color, 2)
+
+def getImageWithOverlay(model, frame, output_modality):
     example = frame["image"].to(device)
     img = example.cpu().permute(1, 2, 0).detach().numpy()
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -178,24 +185,56 @@ def getImageWithOverlay(model, frame):
     # resize image
     resized = cv2.resize(result, dim, interpolation=cv2.INTER_AREA)
 
+    if output_modality == "steering_angle":
+        draw_steering_angle_overlay(example, frame, model, resized)
+    elif output_modality == "waypoints":
+        true_waypoints = frame["waypoints"]
+        turn_signal = int(frame["turn_signal"])
+        draw_trajectory(resized, true_waypoints, (0, 255, 0))
+
+        pred_waypoints = model(example.unsqueeze(0)).squeeze(1).cpu().detach().numpy()[0].reshape(3, 10)
+        draw_trajectory(resized, pred_waypoints[turn_signal], (0, 0, 255))
+
+        # right_waypoints = pred_waypoints[0]
+        # draw_trajectory(resized, right_waypoints, (255, 0, 0))
+        #
+        # straight_waypoints = pred_waypoints[1]
+        # draw_trajectory(resized, straight_waypoints, (0, 0, 255))
+        #
+        # left_waypoints = pred_waypoints[2]
+        # draw_trajectory(resized, left_waypoints, (255, 255, 0))
+
+        turn_signal_map = {
+            1: "straight",
+            2: "left",
+            0: "right"
+        }
+        cv2.putText(resized, 'turn signal: {}'.format(turn_signal_map.get(turn_signal, "unknown")), (10, 110),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+    else:
+        print(f"Unknown output modality: {output_modality}")
+        sys.exit()
+
+    return resized
+
+
+def draw_steering_angle_overlay(example, frame, model, resized):
     steering_angle = math.degrees(frame["steering_angle"])
     vehicle_speed = frame["vehicle_speed"]
     turn_signal = int(frame["turn_signal"])
     cv2.putText(resized, 'True: {:.2f} deg, {:.2f} km/h'.format(steering_angle, vehicle_speed), (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     pred = model(example.unsqueeze(0)).squeeze(1).cpu().detach().numpy()[0]
-    if len(pred) == 1:
+    if len(pred) == 1:  # steering angle
         pred_steering_angle = math.degrees(pred[0])
-    elif len(pred) == 3:
+    elif len(pred) == 3:  # steering angle, conditional
         pred_steering_angle = math.degrees(pred[turn_signal])
     else:
         print(f"Unknown prediction size: {len(pred)}")
         sys.exit()
-
     cv2.putText(resized, 'Pred: {:.2f} deg'.format(pred_steering_angle), (10, 70),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2,
                 cv2.LINE_AA)
-
     turn_signal_map = {
         1: "straight",
         2: "left",
@@ -203,16 +242,12 @@ def getImageWithOverlay(model, frame):
     }
     cv2.putText(resized, 'turn signal: {}'.format(turn_signal_map.get(turn_signal, "unknown")), (10, 110),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-
     # draw steering wheel
     radius = 100
     steering_pos = (150, 270)
     cv2.circle(resized, steering_pos, radius, (255, 255, 255), 7)
     draw_steering_angle(resized, steering_angle, radius, steering_pos, 13, (0, 255, 0))
     draw_steering_angle(resized, pred_steering_angle, radius, steering_pos, 9, (0, 0, 255))
-
-
-    return resized
 
 
 if __name__ == "__main__":
@@ -246,6 +281,14 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
+        '--output-modality',
+        required=False,
+        default="steering_angle",
+        choices=["steering_angle", "waypoints"],
+        help="Choice of output modalities to train model with."
+    )
+
+    argparser.add_argument(
         '--conditional-learning',
         default=False,
         action='store_true',
@@ -257,7 +300,7 @@ if __name__ == "__main__":
     root_path = Path("/home/romet/data2/datasets/rally-estonia/dataset-small")
     data_paths = [root_path / args.dataset_name]
     if args.input_modality == "nvidia-camera":
-        dataset = NvidiaDataset(data_paths)
+        dataset = NvidiaDataset(data_paths, output_modality=args.output_modality)
     elif args.input_modality == "ouster-lidar":
         dataset = OusterDataset(data_paths)
     else:
@@ -268,7 +311,8 @@ if __name__ == "__main__":
         model = PilotNetOld()
     elif args.model_type == "pilotnet":
         n_branches = 3 if args.conditional_learning else 1
-        model = PilotNet(n_branches=n_branches)
+        n_outputs = 10 if args.output_modality == "waypoints" else 1
+        model = PilotNet(n_branches=n_branches, n_outputs=n_outputs)
     else:
         print(f"Unknown model type '{args.model_type}'")
         sys.exit()
@@ -279,7 +323,7 @@ if __name__ == "__main__":
     model.eval()
 
     deq = deque(range(0, len(dataset)))
-    vis = getImageWithOverlay(model, dataset[deq[0]][0])
+    vis = getImageWithOverlay(model, dataset[deq[0]][0], args.output_modality)
 
     cv2.namedWindow('vis', cv2.WINDOW_NORMAL)
     window_scale = 500
@@ -290,8 +334,8 @@ if __name__ == "__main__":
         k = cv2.waitKey(10)
         if k == ord('j'):
             deq.rotate(1)
-            vis = getImageWithOverlay(model, dataset[deq[0]][0])
+            vis = getImageWithOverlay(model, dataset[deq[0]][0], args.output_modality)
         elif k == ord('k'):
             deq.rotate(-1)
-            vis = getImageWithOverlay(model, dataset[deq[0]][0])
+            vis = getImageWithOverlay(model, dataset[deq[0]][0], args.output_modality)
 
