@@ -192,8 +192,9 @@ def getImageWithOverlay(model, frame, output_modality):
         turn_signal = int(frame["turn_signal"])
         draw_trajectory(resized, true_waypoints, (0, 255, 0))
 
-        pred_waypoints = model(example.unsqueeze(0)).squeeze(1).cpu().detach().numpy()[0].reshape(3, 10)
-        draw_trajectory(resized, pred_waypoints[turn_signal], (0, 0, 255))
+        pred_waypoints = model(example.unsqueeze(0)).squeeze(1).cpu().detach().numpy()[0].reshape(n_branches, 10)
+        conditional_selector = turn_signal if n_branches > 1 else 0
+        draw_trajectory(resized, pred_waypoints[conditional_selector], (0, 0, 255))
 
         # right_waypoints = pred_waypoints[0]
         # draw_trajectory(resized, right_waypoints, (255, 0, 0))
