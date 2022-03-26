@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=0-58
+#SBATCH --array=0-57
 BAGS=(
     '2021-05-20-12-36-10_e2e_sulaoja_20_30.bag' \
     '2021-05-20-12-43-17_e2e_sulaoja_20_30.bag' \
@@ -51,8 +51,8 @@ BAGS=(
     '2021-10-20-14-15-07_e2e_rec_neeruti_ss19_22_back.bag' \
     '2021-10-25-17-31-48_e2e_rec_ss2_arula.bag' \
     '2021-10-25-17-06-34_e2e_rec_ss2_arula_back.bag' \
-    '2021-11-08-11-24-44_e2e_rec_ss12_raanitsa.bag.bag' \
-    '2021-11-08-12-08-40_e2e_rec_ss12_raanitsa_backward.bag.bag' \
+    '2021-11-08-11-24-44_e2e_rec_ss12_raanitsa.bag' \
+    '2021-11-08-12-08-40_e2e_rec_ss12_raanitsa_backward.bag' \
     '2021-05-28-15-19-48_e2e_sulaoja_20_30.bag' \
     '2021-06-07-14-20-07_e2e_rec_ss6.bag' \
     '2021-06-07-14-06-31_e2e_rec_ss6.bag' \
@@ -70,4 +70,4 @@ module load any/python/3.8.3-conda
 source activate ros2
 cd /gpfs/space/home/rometaid/nvidia-e2e/data_extract
 
-srun ./extract_rocket_small.sh ${BAGS[$SLURM_ARRAY_TASK_ID]}  /gpfs/space/projects/Bolt/dataset-new/summer2021
+srun ./extract_rocket_small.sh ${BAGS[$SLURM_ARRAY_TASK_ID]}  /gpfs/space/projects/Bolt/dataset-new-small/summer2021
