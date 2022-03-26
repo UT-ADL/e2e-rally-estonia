@@ -15,10 +15,9 @@ from tf.transformations import euler_from_quaternion
 
 class NvidiaDriveImporter:
 
-    def __init__(self, bag_files, extract_dir, resize_camera_images, extract_side_cameras, image_type):
+    def __init__(self, bag_files, extract_dir, extract_side_cameras, image_type):
         self.bag_files = bag_files
         self.extract_dir = extract_dir
-        self.resize_camera_image = resize_camera_images
         self.extract_side_cameras = extract_side_cameras
         self.image_type = image_type
 
@@ -68,8 +67,8 @@ class NvidiaDriveImporter:
         # Camera image dimensions
         self.xmin = 300
         self.xmax = 1620
-        self.ymin = 520
-        self.ymax = 864
+        self.ymin = 570
+        self.ymax = 914
         self.scale = 0.2
 
         height = self.ymax - self.ymin
@@ -164,17 +163,22 @@ class NvidiaDriveImporter:
 
                 elif topic in self.nvidia_topics:
                     camera_name = self.topic_to_camera_name_map[topic]
-                    output_folder = root_folder / camera_name
                     camera_dict["timestamp"].append(msg_timestamp)
                     camera_dict["autonomous"].append(autonomous)
                     camera_dict["camera"].append(camera_name)
-                    image_name = f"{msg_timestamp}.{image_type}"
-                    camera_dict["filename"].append(str(Path(output_folder.stem) / image_name))
+
                     cv_img = bridge.compressed_imgmsg_to_cv2(msg)
-                    if self.resize_camera_image:
-                        cv_img = self.crop(cv_img)
-                        cv_img = self.resize(cv_img)
-                    cv2.imwrite(str(output_folder / image_name), cv_img)
+                    cropped_img = self.crop(cv_img)
+                    image_name = f"{msg_timestamp}.{image_type}"
+                    cropped_output_folder = root_folder / (camera_name + "_cropped")
+                    camera_dict["cropped_filename"].append(str(Path(cropped_output_folder) / image_name))
+                    cv2.imwrite(str(cropped_output_folder / image_name), cropped_img)
+
+                    resized_img = self.resize(cropped_img)
+                    resized_output_folder = root_folder / (camera_name + "_resized")
+                    camera_dict["resized_filename"].append(str(Path(resized_output_folder.stem) / image_name))
+                    cv2.imwrite(str(resized_output_folder / image_name), resized_img)
+
                     progress.update(1)
                 elif topic in self.lidar_topics:
                     if msg_timestamp != oi.ts:
@@ -302,11 +306,6 @@ if __name__ == "__main__":
     parser.add_argument("--extract-dir",
                         help="Directory where bag content is extracted to")
 
-    parser.add_argument("--resize-camera-images",
-                        default=False,
-                        action='store_true',
-                        help='Resize camera image for smaller size')
-
     parser.add_argument("--extract-side-cameras",
                         default=False,
                         action='store_true',
@@ -323,5 +322,5 @@ if __name__ == "__main__":
     bags = [
         args.bag_file
     ]
-    importer = NvidiaDriveImporter(bags, args.extract_dir, args.resize_camera_images, args.extract_side_cameras, args.image_type)
+    importer = NvidiaDriveImporter(bags, args.extract_dir, args.extract_side_cameras, args.image_type)
     importer.import_bags()
