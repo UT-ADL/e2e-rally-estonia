@@ -15,11 +15,12 @@ from tf.transformations import euler_from_quaternion
 
 class NvidiaDriveImporter:
 
-    def __init__(self, bag_files, extract_dir, resize_camera_images, extract_side_cameras, image_type):
+    def __init__(self, bag_files, extract_dir, resize_camera_images, extract_side_cameras, extract_lidar, image_type):
         self.bag_files = bag_files
         self.extract_dir = extract_dir
         self.resize_camera_image = resize_camera_images
         self.extract_side_cameras = extract_side_cameras
+        self.exract_lidar = extract_lidar
         self.image_type = image_type
 
         self.steer_topic = '/pacmod/parsed_tx/steer_rpt'
@@ -47,14 +48,17 @@ class NvidiaDriveImporter:
         if extract_side_cameras:
             self.nvidia_topics = self.nvidia_topics + [left_camera_topic_old, left_camera_topic,
                                                        right_camera_topic_old, right_camera_topic]
+        self.topics = self.nvidia_topics
 
         # OUSTER images
-        self.lidar_amb_c = '/lidar_center/ambient_image'
-        self.lidar_int_c = '/lidar_center/intensity_image'
-        self.lidar_rng_c = '/lidar_center/range_image'
-        self.lidar_topics = [self.lidar_amb_c, self.lidar_int_c, self.lidar_rng_c]
+        if extract_lidar:
+            self.lidar_amb_c = '/lidar_center/ambient_image'
+            self.lidar_int_c = '/lidar_center/intensity_image'
+            self.lidar_rng_c = '/lidar_center/range_image'
+            self.lidar_topics = [self.lidar_amb_c, self.lidar_int_c, self.lidar_rng_c]
+            self.topics = self.topics + self.lidar_topics
 
-        self.topics = self.nvidia_topics + self.lidar_topics + self.general_topics
+        self.topics = self.topics + self.general_topics
 
         self.topic_to_camera_name_map = {
             left_camera_topic_old: "left",
@@ -99,8 +103,10 @@ class NvidiaDriveImporter:
             camera_name = self.topic_to_camera_name_map[camera_topic]
             camera_folder = root_folder / camera_name
             camera_folder.mkdir(exist_ok=True)
-        lidar_folder = root_folder / "lidar"
-        lidar_folder.mkdir(exist_ok=True)
+
+        if self.exract_lidar:
+            lidar_folder = root_folder / "lidar"
+            lidar_folder.mkdir(exist_ok=True)
 
         steering_dict = defaultdict(list)
         vehicle_cmd_dict = defaultdict(list)
@@ -115,7 +121,11 @@ class NvidiaDriveImporter:
         oi = OusterImage(0)
         first = True
 
-        progress = tqdm(total=bag.get_message_count(self.nvidia_topics) + bag.get_message_count(self.lidar_topics))
+        # Only camera and lidar topics are used for progress bar as these take majority of the time
+        msg_count = bag.get_message_count(self.nvidia_topics)
+        if self.exract_lidar:
+            msg_count += bag.get_message_count(self.lidar_topics)
+        progress = tqdm(total=msg_count)
 
         for topic, msg, ts in bag.read_messages(topics=self.topics):
 
@@ -240,16 +250,18 @@ class NvidiaDriveImporter:
         filtered_df = merged.loc[front_wide_camera_df.index]
         filtered_df.to_csv(root_folder / "nvidia_frames.csv", header=True)
 
-        lidar_df = pd.DataFrame(data=lidar_dict)
-        self.create_timestamp_index(lidar_df)
 
-        merged_lidar = functools.reduce(lambda left, right:
-                                        pd.merge(left, right, how='outer', left_index=True, right_index=True),
-                                        [lidar_df, steering_df, vehicle_cmd_df, speed_df, turn_df, current_pose_df])
-        merged_lidar.interpolate(method='time', inplace=True)
+        if self.exract_lidar:
+            lidar_df = pd.DataFrame(data=lidar_dict)
+            self.create_timestamp_index(lidar_df)
 
-        filtered_lidar_df = merged_lidar.loc[lidar_df.index]
-        filtered_lidar_df.to_csv(root_folder / "lidar_frames.csv", header=True)
+            merged_lidar = functools.reduce(lambda left, right:
+                                            pd.merge(left, right, how='outer', left_index=True, right_index=True),
+                                            [lidar_df, steering_df, vehicle_cmd_df, speed_df, turn_df, current_pose_df])
+            merged_lidar.interpolate(method='time', inplace=True)
+
+            filtered_lidar_df = merged_lidar.loc[lidar_df.index]
+            filtered_lidar_df.to_csv(root_folder / "lidar_frames.csv", header=True)
 
     def create_timestamp_index(self, df):
         df['timestamp'] = pd.to_datetime(df['timestamp'])
@@ -299,6 +311,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--bag-file",
                         help="Path to bag file to extract")
+
     parser.add_argument("--extract-dir",
                         help="Directory where bag content is extracted to")
 
@@ -318,10 +331,16 @@ if __name__ == "__main__":
                         choices=["png", "jpg"],
                         help="")
 
+    parser.add_argument("--extract-lidar",
+                        default=False,
+                        action="store_true",
+                        help='Extract lidar images')
+
     args = parser.parse_args()
 
     bags = [
         args.bag_file
     ]
-    importer = NvidiaDriveImporter(bags, args.extract_dir, args.resize_camera_images, args.extract_side_cameras, args.image_type)
+    importer = NvidiaDriveImporter(bags, args.extract_dir, args.resize_camera_images,
+                                   args.extract_side_cameras, args.extract_lidar, args.image_type)
     importer.import_bags()
