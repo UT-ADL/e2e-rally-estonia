@@ -15,10 +15,16 @@ from tf.transformations import euler_from_quaternion
 
 class NvidiaDriveImporter:
 
-    def __init__(self, bag_files, extract_dir, resize_camera_images, resize_scale, extract_side_cameras, extract_lidar, image_type):
+    def __init__(self, bag_files, extract_dir, resize_camera_images,
+                 camera_crop_xmin, camera_crop_xmax, camera_crop_ymin, camera_crop_ymax,
+                 resize_scale, extract_side_cameras, extract_lidar, image_type):
         self.bag_files = bag_files
         self.extract_dir = extract_dir
         self.resize_camera_image = resize_camera_images
+        self.camera_crop_xmin = camera_crop_xmin
+        self.camera_crop_xmax = camera_crop_xmax
+        self.camera_crop_ymin = camera_crop_ymin
+        self.camera_crop_ymax = camera_crop_ymax
         self.resize_scale = resize_scale
         self.extract_side_cameras = extract_side_cameras
         self.exract_lidar = extract_lidar
@@ -70,14 +76,8 @@ class NvidiaDriveImporter:
             front_wide_camera_topic: "front_wide",
         }
 
-        # Camera image dimensions
-        self.xmin = 300
-        self.xmax = 1620
-        self.ymin = 570
-        self.ymax = 914
-
-        height = self.ymax - self.ymin
-        width = self.xmax - self.xmin
+        height = self.camera_crop_ymax - self.camera_crop_ymin
+        width = self.camera_crop_xmax - self.camera_crop_xmin
         self.scaled_width = int(self.resize_scale * width)
         self.scaled_height = int(self.resize_scale * height)
 
@@ -278,8 +278,7 @@ class NvidiaDriveImporter:
         return cv2.resize(img, dsize=(self.scaled_width, self.scaled_height), interpolation=cv2.INTER_LINEAR)
 
     def crop(self, img):
-        return img[self.ymin:self.ymax, self.xmin:self.xmax, :]
-
+        return img[self.camera_crop_ymin:self.camera_crop_ymax, self.camera_crop_xmin:self.camera_crop_xmax, :]
 
 
 class OusterImage(object):
@@ -341,11 +340,38 @@ if __name__ == "__main__":
                         action="store_true",
                         help='Extract lidar images')
 
+    parser.add_argument("--camera-crop-xmin",
+                        default=300,
+                        type=int,
+                        help="Camera image crop horisontal minimum position."
+                        )
+
+    parser.add_argument("--camera-crop-xmax",
+                        default=1620,
+                        type=int,
+                        help="Camera image crop horisontal maximum position."
+                        )
+
+    parser.add_argument("--camera-crop-ymin",
+                        default=570,
+                        type=int,
+                        help="Camera image crop vertical minimum position."
+                        )
+
+    parser.add_argument("--camera-crop-ymax",
+                        default=914,
+                        type=int,
+                        help="Camera image crop vertical maximum position."
+                        )
+
     args = parser.parse_args()
 
     bags = [
         args.bag_file
     ]
-    importer = NvidiaDriveImporter(bags, args.extract_dir, args.resize_camera_images, args.resize_scale,
+    importer = NvidiaDriveImporter(bags, args.extract_dir, args.resize_camera_images,
+                                   args.camera_crop_xmin, args.camera_crop_xmax,
+                                   args.camera_crop_ymin, args.camera_crop_ymax,
+                                   args.resize_scale,
                                    args.extract_side_cameras, args.extract_lidar, args.image_type)
     importer.import_bags()
