@@ -14,8 +14,8 @@ from torch.utils.data import ConcatDataset, WeightedRandomSampler
 from dataloading.nvidia import NvidiaTrainDataset, NvidiaValidationDataset, NvidiaWinterTrainDataset, \
     NvidiaWinterValidationDataset, AugmentationConfig
 from dataloading.ouster import OusterTrainDataset, OusterValidationDataset
-from network import PilotNetConditional, PilotnetControl
-from trainer import Trainer, ControlTrainer, ConditionalTrainer
+from pilotnet import PilotNetConditional, PilotnetControl
+from trainer import ControlTrainer, ConditionalTrainer
 
 
 class WeighedL1Loss(L1Loss):
