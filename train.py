@@ -5,58 +5,142 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
+import wandb
+from torch import Tensor
+from torch.nn import L1Loss, MSELoss
 from torch.utils.data import ConcatDataset, WeightedRandomSampler
+#from torchsummary import summary
 
 from dataloading.nvidia import NvidiaTrainDataset, NvidiaValidationDataset, NvidiaWinterTrainDataset, \
-    NvidiaWinterValidationDataset, NvidiaAllTrainDataset, NvidiaAllValidationDataset, AugmentationConfig
+    NvidiaWinterValidationDataset, AugmentationConfig
 from dataloading.ouster import OusterTrainDataset, OusterValidationDataset
-from network import PilotNet
-from trainer import Trainer
+from network import PilotNetConditional, PilotnetControl
+from trainer import Trainer, ControlTrainer, ConditionalTrainer
 
+
+class WeighedL1Loss(L1Loss):
+    def __init__(self, weights):
+        super().__init__(reduction='none')
+        self.weights = weights
+
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+        loss = super().forward(input, target)
+        return (loss * self.weights).mean()
+
+class WeighedMSELoss(MSELoss):
+    def __init__(self, weights):
+        super().__init__(reduction='none')
+        self.weights = weights
+
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+        loss = super().forward(input, target)
+        return (loss * self.weights).mean()
 
 class TrainingConfig:
-    def __init__(self, dataset_folder, input_modality, lidar_channel, output_modality, conditional_learning,
-                 learning_rate, weight_decay, patience, max_epochs, batch_size, batch_sampler, num_workers,
-                 wandb_project):
-        self.dataset_folder = dataset_folder
-        self.input_modality = input_modality
-        self.lidar_channel = lidar_channel
-        self.output_modality = output_modality
-        self.conditional_learning = conditional_learning
-        self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
-        self.patience = patience
-        self.max_epochs = max_epochs
-        self.batch_size = batch_size
-        self.batch_sampler = batch_sampler
-        self.num_workers = num_workers
-        self.wandb_project = wandb_project
+    def __init__(self, args):
+        self.model_type = args.model_type
+        self.dataset_folder = args.dataset_folder
+        self.input_modality = args.input_modality
+        self.lidar_channel = args.lidar_channel
+        self.output_modality = args.output_modality
+        self.n_waypoints = args.num_waypoints
+        self.learning_rate = args.learning_rate
+        self.weight_decay = args.weight_decay
+        self.patience = args.patience
+        self.max_epochs = args.max_epochs
+        self.batch_size = args.batch_size
+        self.batch_sampler = args.batch_sampler
+        self.num_workers = args.num_workers
+        self.wandb_project = args.wandb_project
+        self.loss = args.loss
+        self.loss_discount_rate = args.loss_discount_rate
 
         self.n_input_channels = 1 if self.lidar_channel else 3
-        self.n_outputs = 10 if self.output_modality == "waypoints" else 1
-        self.n_branches = 3 if self.conditional_learning else 1
+        if self.output_modality == "waypoints":
+            self.n_outputs = 2 * self.n_waypoints
+        elif self.output_modality == "steering_angle":
+            self.n_outputs = 1
+        else:
+            print(f"Uknown output modality {self.output_modality}")
+            sys.exit()
+
+        self.n_branches = 3 if self.model_type == "pilotnet-conditional" else 1
         self.fps = 10 if self.input_modality == "ouster-lidar" else 30
+        self.pretrained_model = args.pretrained_model
+
 
 def train_model(model_name, train_conf, augment_conf):
 
     print(f"Training model {model_name}, wandb_project={train_conf.wandb_project}")
 
+    wandb.init(project=train_conf.wandb_project)
+    print('train_conf: ', train_conf.__dict__)
+    print('augment_conf: ', augment_conf.__dict__)
+
     train_loader, valid_loader = load_data(train_conf, augment_conf)
 
-    model = PilotNet(train_conf.n_input_channels, train_conf.n_outputs, train_conf.n_branches)
-    criterion = nn.L1Loss()
+    # TODO: model and trainer should be combined
+    if train_conf.model_type == "pilotnet-control":
+        model = PilotnetControl(train_conf.n_input_channels, train_conf.n_outputs)
+        trainer = ControlTrainer(model_name, train_conf.output_modality, train_conf.n_branches,
+                                 train_conf.wandb_project)
+    elif train_conf.model_type == "pilotnet-conditional":
+        model = PilotNetConditional(train_conf.n_input_channels, train_conf.n_outputs, train_conf.n_branches)
+        trainer = ConditionalTrainer(model_name, train_conf.output_modality, train_conf.n_branches,
+                                     train_conf.wandb_project)
+    else:
+        model = PilotNetConditional(train_conf.n_input_channels, train_conf.n_outputs, train_conf.n_branches)
+        trainer = ConditionalTrainer(model_name, train_conf.output_modality, train_conf.n_branches,
+                                     train_conf.wandb_project)
+
+    #summary(model, input_size=(3, 660, 172), device="cpu")
+    #summary(model, input_size=(3, 264, 68), device="cpu")
+
+    if train_conf.pretrained_model:
+        print(f"Initializing weights with pretrained model: {train_conf.pretrained_model}")
+        pretrained_model = load_model(train_conf.pretrained_model,
+                                      train_conf.n_input_channels,
+                                      train_conf.n_outputs,
+                                      n_branches=1)
+        model.features.load_state_dict(pretrained_model.features.state_dict())
+        for i in range(train_conf.n_branches):
+            model.conditional_branches[i].load_state_dict(pretrained_model.conditional_branches[0].state_dict())
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    weights = torch.FloatTensor([(train_conf.loss_discount_rate ** i, train_conf.loss_discount_rate ** i)
+                                 for i in range(train_conf.n_waypoints)]).to(device)
+    weights = weights.flatten()
+    if train_conf.n_branches > 1:  # todo: this is conditional learning specific and should be handled there
+        weights = torch.cat(tuple(weights for i in range(train_conf.n_branches)), 0)
+
+    if train_conf.loss == "mse":
+        criterion = MSELoss()
+    elif train_conf.loss == "mae":
+        criterion = L1Loss()
+    elif train_conf.loss == "mse-weighted":
+        criterion = WeighedMSELoss(weights)
+    elif train_conf.loss == "mae-weighted":
+        criterion = WeighedL1Loss(weights)
+    else:
+        print(f"Uknown loss function {train_conf.loss}")
+        sys.exit()
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=train_conf.learning_rate, betas=(0.9, 0.999),
                                   eps=1e-08, weight_decay=train_conf.weight_decay, amsgrad=False)
 
     # todo: move this to trainer
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     criterion = criterion.to(device)
 
-    trainer = Trainer(model_name, train_conf.output_modality, train_conf.n_branches, train_conf.wandb_project)
     trainer.train(model, train_loader, valid_loader, optimizer, criterion,
                   train_conf.max_epochs, train_conf.patience, train_conf.fps)
+
+def load_model(model_name, n_input_channels=3, n_outputs=1, n_branches=1):
+    model = PilotNetConditional(n_input_channels=n_input_channels, n_outputs=n_outputs, n_branches=n_branches)
+    model.load_state_dict(torch.load(f"models/{model_name}/best.pt"))
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    return model
 
 
 def load_data(train_conf, augment_conf):
@@ -65,15 +149,16 @@ def load_data(train_conf, augment_conf):
 
     dataset_path = Path(train_conf.dataset_folder)
     if train_conf.input_modality == "nvidia-camera":
-        trainset = NvidiaTrainDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
-        validset = NvidiaValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
+        trainset = NvidiaTrainDataset(dataset_path, train_conf.output_modality,
+                                      train_conf.n_branches, n_waypoints=train_conf.n_waypoints)
+        validset = NvidiaValidationDataset(dataset_path, train_conf.output_modality
+                                           , train_conf.n_branches, n_waypoints=train_conf.n_waypoints)
     elif train_conf.input_modality == "nvidia-camera-winter":
         trainset = NvidiaWinterTrainDataset(dataset_path, train_conf.output_modality,
-                                            train_conf.n_branches, augment_conf)
-        validset = NvidiaWinterValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
-    elif train_conf.input_modality == "nvidia-camera-all":
-        trainset = NvidiaAllTrainDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
-        validset = NvidiaAllValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches)
+                                            train_conf.n_branches, n_waypoints=train_conf.n_waypoints,
+                                            augment_conf=augment_conf)
+        validset = NvidiaWinterValidationDataset(dataset_path, train_conf.output_modality,
+                                                 train_conf.n_branches, n_waypoints=train_conf.n_waypoints)
     elif train_conf.input_modality == "ouster-lidar":
         trainset = OusterTrainDataset(dataset_path, train_conf.output_modality)
         validset = OusterValidationDataset(dataset_path, train_conf.output_modality)
@@ -108,10 +193,9 @@ def load_data(train_conf, augment_conf):
 
 
 def calculate_weights(df):
-    optimized_bins = np.array([-8.81234893e+00, -2.78245811e+00, -1.02905812e+00, -4.43559368e-01,
+    optimized_bins = np.array([df["steering_angle"].min() - 0.00001, -2.78245811e+00, -1.02905812e+00, -4.43559368e-01,
                                -1.64549582e-01, 6.90239861e-03, 1.69872354e-01, 4.35963640e-01,
-                               9.63913148e-01, 2.70831896e+00, 8.57767303e+00])
-
+                               9.63913148e-01, 2.70831896e+00, df["steering_angle"].max() + 0.00001])
     bin_ranges = pd.cut(df["steering_angle"], optimized_bins, labels=np.arange(1, 11))
     df["bins"] = bin_ranges
     counts = bin_ranges.value_counts(sort=False)
@@ -136,6 +220,13 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
+        '--model-type',
+        required=True,
+        choices=['pilotnet', 'pilotnet-conditional', 'pilotnet-control'],
+        help='Defines which model will be trained.'
+    )
+
+    argparser.add_argument(
         '--input-modality',
         required=True,
         choices=['nvidia-camera', 'nvidia-camera-winter', 'nvidia-camera-all', 'ouster-lidar'],
@@ -155,6 +246,13 @@ if __name__ == "__main__":
         default="steering_angle",
         choices=["steering_angle", "waypoints"],
         help="Choice of output modalities to train model with."
+    )
+
+    argparser.add_argument(
+        '--num-waypoints',
+        type=int,
+        default=6,
+        help="Number of waypoints used for trajectory."
     )
 
     argparser.add_argument(
@@ -215,7 +313,7 @@ if __name__ == "__main__":
         '--batch-sampler',
         required=False,
         choices=['weighted', 'random'],
-        default='weighted',
+        default='random',
         help='Sampler used for creating batches for training.'
     )
 
@@ -224,13 +322,6 @@ if __name__ == "__main__":
         type=int,
         default=16,
         help='Weight decay used in training.'
-    )
-
-    argparser.add_argument(
-        '--conditional-learning',
-        default=False,
-        action='store_true',
-        help="When true, network is trained with conditional branches using turn blinkers."
     )
 
     argparser.add_argument(
@@ -254,10 +345,30 @@ if __name__ == "__main__":
         help='Probability of augmenting input image by blurring it.'
     )
 
+    argparser.add_argument(
+        '--loss',
+        required=False,
+        choices=['mse', 'mae', 'mse-weighted', 'mae-weighted'],
+        default='mae',
+        help='Loss function used for training.'
+    )
+
+    argparser.add_argument(
+        "--loss-discount-rate",
+        required=False,
+        type=float,
+        default=0.8,
+        help="Used to discount waypoints in trajectory as nearer waypoints are more important. "
+             "Only used with weighted loss."
+    )
+
+    argparser.add_argument(
+        '--pretrained-model',
+        required=False,
+        help='Pretrained model used to initialize weights.'
+    )
+
     args = argparser.parse_args()
-    train_config = TrainingConfig(args.dataset_folder, args.input_modality, args.lidar_channel,
-                                  args.output_modality, args.conditional_learning, args.learning_rate,
-                                  args.weight_decay, args.patience, args.max_epochs,
-                                  args.batch_size, args.batch_sampler, args.num_workers, args.wandb_project)
+    train_config = TrainingConfig(args)
     aug_config = AugmentationConfig(args.aug_color_prob, args.aug_noise_prob, args.aug_blur_prob)
     train_model(args.model_name, train_config, aug_config)
