@@ -18,6 +18,166 @@ from pilotnet import PilotNetConditional, PilotnetControl
 from trainer import ControlTrainer, ConditionalTrainer
 
 
+def parse_arguments():
+    argparser = argparse.ArgumentParser()
+
+    argparser.add_argument(
+        '--model-name',
+        required=True,
+        help='Name of the model used for saving model and logging in W&B.'
+    )
+
+    argparser.add_argument(
+        '--model-type',
+        required=True,
+        choices=['pilotnet', 'pilotnet-conditional', 'pilotnet-control'],
+        help='Defines which model will be trained.'
+    )
+
+    argparser.add_argument(
+        '--input-modality',
+        required=True,
+        choices=['nvidia-camera', 'nvidia-camera-winter', 'nvidia-camera-all', 'ouster-lidar'],
+    )
+
+    argparser.add_argument(
+        '--lidar-channel',
+        required=False,
+        choices=['ambience', 'intensity', 'range'],
+        help="Lidar channels to use for training. Combined image is used if not provided. "
+             "Only applies to 'ouster-lidar' modality."
+    )
+
+    argparser.add_argument(
+        '--output-modality',
+        required=False,
+        default="steering_angle",
+        choices=["steering_angle", "waypoints"],
+        help="Choice of output modalities to train model with."
+    )
+
+    argparser.add_argument(
+        '--num-waypoints',
+        type=int,
+        default=6,
+        help="Number of waypoints used for trajectory."
+    )
+
+    argparser.add_argument(
+        '--dataset-folder',
+        default="/home/romet/data2/datasets/rally-estonia/dataset-small",
+        help='Root path to the dataset.'
+    )
+
+    argparser.add_argument(
+        '--wandb-project',
+        required=False,
+        help='W&B project name to use for metrics. Wandb logging is disabled when no project name is provided.'
+    )
+
+    argparser.add_argument(
+        '--max-epochs',
+        type=int,
+        default=100,
+        help="Maximium number of epochs to train"
+    )
+
+    argparser.add_argument(
+        '--patience',
+        type=int,
+        default=10,
+        help="Number of epochs to train without improvement in validation loss. Used for early stopping."
+    )
+
+    argparser.add_argument(
+        '--learning-rate',
+        type=float,
+        default=1e-3,
+        help="Learning rate used in training."
+    )
+
+    argparser.add_argument(
+        '--weight-decay',
+        type=float,
+        default=1e-02,
+        help='Weight decay used in training.'
+    )
+
+    argparser.add_argument(
+        '--filter-blinker-turns',
+        default=False,
+        action='store_true',
+        help='When true, turns with blinker (left or right) on will be removed from training and validation data.'
+    )
+
+    argparser.add_argument(
+        '--batch-size',
+        type=int,
+        default=512,
+        help='Weight decay used in training.'
+    )
+
+    argparser.add_argument(
+        '--batch-sampler',
+        required=False,
+        choices=['weighted', 'random'],
+        default='random',
+        help='Sampler used for creating batches for training.'
+    )
+
+    argparser.add_argument(
+        '--num-workers',
+        type=int,
+        default=16,
+        help='Weight decay used in training.'
+    )
+
+    argparser.add_argument(
+        '--aug-color-prob',
+        type=float,
+        default=0.0,
+        help='Probability of augmenting input image color by changing brightness, saturation and contrast.'
+    )
+
+    argparser.add_argument(
+        '--aug-noise-prob',
+        type=float,
+        default=0.0,
+        help='Probability of augmenting input image with noise.'
+    )
+
+    argparser.add_argument(
+        '--aug-blur-prob',
+        type=float,
+        default=0.0,
+        help='Probability of augmenting input image by blurring it.'
+    )
+
+    argparser.add_argument(
+        '--loss',
+        required=False,
+        choices=['mse', 'mae', 'mse-weighted', 'mae-weighted'],
+        default='mae',
+        help='Loss function used for training.'
+    )
+
+    argparser.add_argument(
+        "--loss-discount-rate",
+        required=False,
+        type=float,
+        default=0.8,
+        help="Used to discount waypoints in trajectory as nearer waypoints are more important. "
+             "Only used with weighted loss."
+    )
+
+    argparser.add_argument(
+        '--pretrained-model',
+        required=False,
+        help='Pretrained model used to initialize weights.'
+    )
+
+    return argparser.parse_args()
+
 class WeighedL1Loss(L1Loss):
     def __init__(self, weights):
         super().__init__(reduction='none')
@@ -211,164 +371,7 @@ def calculate_weights(df):
 
 
 if __name__ == "__main__":
-    argparser = argparse.ArgumentParser()
-
-    argparser.add_argument(
-        '--model-name',
-        required=True,
-        help='Name of the model used for saving model and logging in W&B.'
-    )
-
-    argparser.add_argument(
-        '--model-type',
-        required=True,
-        choices=['pilotnet', 'pilotnet-conditional', 'pilotnet-control'],
-        help='Defines which model will be trained.'
-    )
-
-    argparser.add_argument(
-        '--input-modality',
-        required=True,
-        choices=['nvidia-camera', 'nvidia-camera-winter', 'nvidia-camera-all', 'ouster-lidar'],
-    )
-
-    argparser.add_argument(
-        '--lidar-channel',
-        required=False,
-        choices=['ambience', 'intensity', 'range'],
-        help="Lidar channels to use for training. Combined image is used if not provided. "
-             "Only applies to 'ouster-lidar' modality."
-    )
-
-    argparser.add_argument(
-        '--output-modality',
-        required=False,
-        default="steering_angle",
-        choices=["steering_angle", "waypoints"],
-        help="Choice of output modalities to train model with."
-    )
-
-    argparser.add_argument(
-        '--num-waypoints',
-        type=int,
-        default=6,
-        help="Number of waypoints used for trajectory."
-    )
-
-    argparser.add_argument(
-        '--dataset-folder',
-        default="/home/romet/data2/datasets/rally-estonia/dataset-small",
-        help='Root path to the dataset.'
-    )
-
-    argparser.add_argument(
-        '--wandb-project',
-        required=False,
-        help='W&B project name to use for metrics. Wandb logging is disabled when no project name is provided.'
-    )
-
-    argparser.add_argument(
-        '--max-epochs',
-        type=int,
-        default=100,
-        help="Maximium number of epochs to train"
-    )
-
-    argparser.add_argument(
-        '--patience',
-        type=int,
-        default=10,
-        help="Number of epochs to train without improvement in validation loss. Used for early stopping."
-    )
-
-    argparser.add_argument(
-        '--learning-rate',
-        type=float,
-        default=1e-3,
-        help="Learning rate used in training."
-    )
-
-    argparser.add_argument(
-        '--weight-decay',
-        type=float,
-        default=1e-02,
-        help='Weight decay used in training.'
-    )
-
-    argparser.add_argument(
-        '--filter-blinker-turns',
-        default=False,
-        action='store_true',
-        help='When true, turns with blinker (left or right) on will be removed from training and validation data.'
-    )
-
-    argparser.add_argument(
-        '--batch-size',
-        type=int,
-        default=512,
-        help='Weight decay used in training.'
-    )
-
-    argparser.add_argument(
-        '--batch-sampler',
-        required=False,
-        choices=['weighted', 'random'],
-        default='random',
-        help='Sampler used for creating batches for training.'
-    )
-
-    argparser.add_argument(
-        '--num-workers',
-        type=int,
-        default=16,
-        help='Weight decay used in training.'
-    )
-
-    argparser.add_argument(
-        '--aug-color-prob',
-        type=float,
-        default=0.0,
-        help='Probability of augmenting input image color by changing brightness, saturation and contrast.'
-    )
-
-    argparser.add_argument(
-        '--aug-noise-prob',
-        type=float,
-        default=0.0,
-        help='Probability of augmenting input image with noise.'
-    )
-
-    argparser.add_argument(
-        '--aug-blur-prob',
-        type=float,
-        default=0.0,
-        help='Probability of augmenting input image by blurring it.'
-    )
-
-    argparser.add_argument(
-        '--loss',
-        required=False,
-        choices=['mse', 'mae', 'mse-weighted', 'mae-weighted'],
-        default='mae',
-        help='Loss function used for training.'
-    )
-
-    argparser.add_argument(
-        "--loss-discount-rate",
-        required=False,
-        type=float,
-        default=0.8,
-        help="Used to discount waypoints in trajectory as nearer waypoints are more important. "
-             "Only used with weighted loss."
-    )
-
-    argparser.add_argument(
-        '--pretrained-model',
-        required=False,
-        help='Pretrained model used to initialize weights.'
-    )
-
-    args = argparser.parse_args()
+    args = parse_arguments()
     train_config = TrainingConfig(args)
     aug_config = AugmentationConfig(args.aug_color_prob, args.aug_noise_prob, args.aug_blur_prob)
     train_model(args.model_name, train_config, aug_config)
