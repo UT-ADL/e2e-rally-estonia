@@ -2,7 +2,7 @@ from pathlib import Path
 
 from matplotlib import pyplot as plt
 
-from metrics import calculate_lateral_errors, read_frames
+from metrics import calculate_lateral_errors, read_frames_driving
 
 
 def draw_error_plot(ax, model_frames, expert_frames, title=None):
@@ -26,18 +26,18 @@ if __name__ == "__main__":
     root_path = Path("/gpfs/space/projects/Bolt/dataset")
 
     datasets_backwards = {
-        'Lidar in train night': read_frames([root_path / '2021-11-25-17-08-28_e2e_rec_elva-lidar-inTrain-0.8-backNight'], "lidar_frames.csv"),
-        'Lidar night': read_frames([root_path / '2021-11-25-17-43-47_e2e_rec_elva-lidar-0.8-backNight'], "lidar_frames.csv"),
-        'Lidar night #2': read_frames([root_path / '2021-11-25-18-07-28_e2e_rec_elva-lidar-0.8-backNight_attempt2'], "lidar_frames.csv"),
+        'Lidar in train night': read_frames_driving([root_path / '2021-11-25-17-08-28_e2e_rec_elva-lidar-inTrain-0.8-backNight'], "lidar_frames.csv"),
+        'Lidar night': read_frames_driving([root_path / '2021-11-25-17-43-47_e2e_rec_elva-lidar-0.8-backNight'], "lidar_frames.csv"),
+        'Lidar night #2': read_frames_driving([root_path / '2021-11-25-18-07-28_e2e_rec_elva-lidar-0.8-backNight_attempt2'], "lidar_frames.csv"),
     }
 
     datasets = {
-        'Lidar in train night': read_frames([root_path / '2021-11-25-16-57-26_e2e_rec_elva-lidar-inTrain-0.8-forwardNight'], "lidar_frames.csv"),
-        'Lidar train night': read_frames([root_path / "2021-11-25-17-31-42_e2e_rec_elva-lidar-0.8-forwardNight"], "lidar_frames.csv"),
-        'Lidar train night #2': read_frames([root_path / '2021-11-25-17-56-16_e2e_rec_elva-lidar-0.8-forwardNight_attempt2'], "lidar_frames.csv"),
+        'Lidar in train night': read_frames_driving([root_path / '2021-11-25-16-57-26_e2e_rec_elva-lidar-inTrain-0.8-forwardNight'], "lidar_frames.csv"),
+        'Lidar train night': read_frames_driving([root_path / "2021-11-25-17-31-42_e2e_rec_elva-lidar-0.8-forwardNight"], "lidar_frames.csv"),
+        'Lidar train night #2': read_frames_driving([root_path / '2021-11-25-17-56-16_e2e_rec_elva-lidar-0.8-forwardNight_attempt2'], "lidar_frames.csv"),
     }
-    expert_frames = read_frames([root_path / '2021-10-26-10-49-06_e2e_rec_ss20_elva'], "lidar_frames.csv")
-    expert_frames_back = read_frames([root_path / '2021-10-26-11-08-59_e2e_rec_ss20_elva_back'], "lidar_frames.csv")
+    expert_frames = read_frames_driving([root_path / '2021-10-26-10-49-06_e2e_rec_ss20_elva'], "lidar_frames.csv")
+    expert_frames_back = read_frames_driving([root_path / '2021-10-26-11-08-59_e2e_rec_ss20_elva_back'], "lidar_frames.csv")
 
     fig, ax = plt.subplots(len(datasets), 2, figsize=(15, 30))
 
