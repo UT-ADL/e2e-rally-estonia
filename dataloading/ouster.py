@@ -72,7 +72,7 @@ class OusterDataset(Dataset):
         if self.transform:
             data = self.transform(data)
 
-        return data, "dummy"
+        return data, "dummy", "dummy"
 
     def __len__(self):
         return len(self.frames.index)
