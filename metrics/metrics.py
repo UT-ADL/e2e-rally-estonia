@@ -41,8 +41,9 @@ def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_r
         'expert_whiteness': expert_whiteness,
     }
 
+
 def calculate_open_loop_metrics(predicted_steering, true_steering, fps):
-    predicted_degrees = np.array(predicted_steering) / np.pi * 180
+    predicted_degrees = predicted_steering / np.pi * 180
     true_degrees = true_steering / np.pi * 180
     errors = np.abs(true_degrees - predicted_degrees)
     mae = errors.mean()
@@ -58,6 +59,50 @@ def calculate_open_loop_metrics(predicted_steering, true_steering, fps):
         'max': max,
         'whiteness': whiteness,
         'expert_whiteness': expert_whiteness
+    }
+
+
+def calculate_trajectory_open_loop_metrics(predicted_waypoints, true_waypoints, fps):
+    first_wp_error = np.hypot(predicted_waypoints[:, 0] - true_waypoints[:, 0],
+                              predicted_waypoints[:, 1] - true_waypoints[:, 1])
+
+    first_wp_whiteness = calculate_whiteness(predicted_waypoints[:, 1], fps=fps)
+    first_wp_expert_whiteness = calculate_whiteness(true_waypoints[:, 1], fps=fps)
+
+    sixth_wp_error = np.hypot(predicted_waypoints[:, 10] - true_waypoints[:, 10],
+                              predicted_waypoints[:, 11] - true_waypoints[:, 11])
+
+    sixth_wp_whiteness = calculate_whiteness(predicted_waypoints[:, 11], fps=fps)
+    sixth_wp_expert_whiteness = calculate_whiteness(true_waypoints[:, 11], fps=fps)
+
+    # number of predicted waypoints can be different, just take equal number of ground truth waypoints
+    true_waypoints = true_waypoints[:, 0:predicted_waypoints.shape[1]]
+    last_wp_error = np.hypot(predicted_waypoints[:, -2] - true_waypoints[:, -2],
+                             predicted_waypoints[:, -1] - true_waypoints[:, -1])
+    last_wp_whiteness = calculate_whiteness(predicted_waypoints[:, -1], fps=fps)
+    last_wp_expert_whiteness = calculate_whiteness(true_waypoints[:, -1], fps=fps)
+
+    #zipped_waypoints = tqdm(zip(predicted_waypoints, true_waypoints), total=len(true_waypoints))
+    #zipped_waypoints.set_description("Calculating frechet distances")
+    #zipped_waypoints = zip(predicted_waypoints, true_waypoints)
+    #frechet_distances = np.array(
+    #    [frdist(z[0].reshape(-1, 2), z[1].reshape(-1, 2)) for z in zipped_waypoints])
+
+    return {
+        'first_wp_mae': first_wp_error.mean(),
+        'first_wp_rmse': np.sqrt((first_wp_error ** 2).mean()),
+        'first_wp_max': first_wp_error.max(),
+        'first_wp_whiteness': first_wp_whiteness,
+        'first_wp_expert_whiteness': first_wp_expert_whiteness,
+        'sixth_wp_mae': sixth_wp_error.mean(),
+        'sixth_wp_whiteness': sixth_wp_whiteness,
+        'sixth_wp_expert_whiteness': sixth_wp_expert_whiteness,
+        'last_wp_mae': last_wp_error.mean(),
+        'last_wp_rmse': np.sqrt((last_wp_error ** 2).mean()),
+        'last_wp_max': last_wp_error.max(),
+        'last_wp_whiteness': last_wp_whiteness,
+        'last_wp_expert_whiteness': last_wp_expert_whiteness,
+        #'frechet_distance': frechet_distances.mean()
     }
 
 
