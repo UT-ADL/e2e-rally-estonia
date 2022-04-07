@@ -1,9 +1,60 @@
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
-import pytorch_lightning as pl
+
+"""
+Network from 'End to End Learning for Self-Driving Cars' paper:
+https://arxiv.org/abs/1604.07316
+
+Conditonal control is concatenated with input features to each policy branchy
+"""
+class PilotNet(nn.Module):
+
+    def __init__(self, n_input_channels=3):
+        super(PilotNet, self).__init__()
+
+        self.features = nn.Sequential(
+            nn.Conv2d(n_input_channels, 24, 5, stride=2),
+            nn.BatchNorm2d(24),
+            nn.LeakyReLU(),
+            nn.Conv2d(24, 36, 5, stride=2),
+            nn.BatchNorm2d(36),
+            nn.LeakyReLU(),
+            nn.Conv2d(36, 48, 5, stride=2),
+            nn.BatchNorm2d(48),
+            nn.LeakyReLU(),
+            nn.Conv2d(48, 64, 3, stride=1),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.Conv2d(64, 64, 3, stride=1),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.Flatten()
+        )
+
+        self.regressor = nn.Sequential(
+            nn.Linear(1664, 100),
+            nn.BatchNorm1d(100),
+            nn.LeakyReLU(),
+            nn.Linear(100, 50),
+            nn.BatchNorm1d(50),
+            nn.LeakyReLU(),
+            nn.Linear(50, 10),
+            nn.LeakyReLU(),
+            nn.Linear(10, 1),
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.regressor(x)
+        return x
 
 
+"""
+Network from 'End-to-end Driving via Conditional Imitation Learning' paper:
+https://arxiv.org/abs/1710.02410
+
+There is separate policy branch for each road selection, by default 3 for going straight, turning left and right.
+"""
 class PilotNetConditional(nn.Module):
 
     def __init__(self, n_input_channels=3, n_outputs=1, n_branches=1):
@@ -49,6 +100,12 @@ class PilotNetConditional(nn.Module):
         return x
 
 
+"""
+Network from 'Urban Driving with Conditional Imitation Learning' paper:
+https://arxiv.org/abs/1912.00177
+
+Conditonal control is concatenated with input features to each policy branchy
+"""
 class PilotnetControl(nn.Module):
 
     def __init__(self, n_input_channels=3, n_outputs=1):
@@ -98,84 +155,3 @@ class PilotnetControl(nn.Module):
         x = self.regressor2(torch.cat([x, control], dim=1))
         x = self.regressor3(torch.cat([x, control], dim=1))
         return x
-
-class PilotNetOld(nn.Module):
-
-    def __init__(self, n_input_channels=3):
-        super(PilotNetOld, self).__init__()
-
-        self.features = nn.Sequential(
-            nn.Conv2d(n_input_channels, 24, 5, stride=2),
-            nn.BatchNorm2d(24),
-            nn.LeakyReLU(),
-            nn.Conv2d(24, 36, 5, stride=2),
-            nn.BatchNorm2d(36),
-            nn.LeakyReLU(),
-            nn.Conv2d(36, 48, 5, stride=2),
-            nn.BatchNorm2d(48),
-            nn.LeakyReLU(),
-            nn.Conv2d(48, 64, 3, stride=1),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(),
-            nn.Conv2d(64, 64, 3, stride=1),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(),
-            nn.Flatten()
-        )
-
-        self.regressor = nn.Sequential(
-            nn.Linear(1664, 100),
-            nn.BatchNorm1d(100),
-            nn.LeakyReLU(),
-            nn.Linear(100, 50),
-            nn.BatchNorm1d(50),
-            nn.LeakyReLU(),
-            nn.Linear(50, 10),
-            nn.LeakyReLU(),
-            nn.Linear(10, 1),
-        )
-
-    def forward(self, x):
-        x = self.features(x)
-        x = self.regressor(x)
-        return x
-
-
-class SteeringNet(pl.LightningModule):
-    def __init__(self):
-        super(SteeringNet, self).__init__()
-
-        input_size = 20
-
-        self.net = nn.Sequential(
-            nn.Linear(input_size, input_size),
-            nn.LeakyReLU(),
-            nn.Linear(input_size, input_size),
-            nn.LeakyReLU(),
-            nn.Linear(input_size, input_size),
-            nn.LeakyReLU(),
-            nn.Linear(input_size, 1),
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-    def configure_optimizers(self):
-        # optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3, betas=(0.9, 0.999),
-                                      eps=1e-08, weight_decay=1e-4, amsgrad=False)
-        return optimizer
-
-    def training_step(self, train_batch, batch_idx):
-        x, y = train_batch
-        y_pred = self.net(x).flatten()
-        loss = F.l1_loss(y_pred, y)
-        self.log('train_loss', loss)
-        return loss
-
-    def validation_step(self, val_batch, batch_idx):
-        x, y = val_batch
-        y_pred = self.net(x).flatten()
-        loss = F.l1_loss(y_pred, y)
-        self.log('val_loss', loss)
-
