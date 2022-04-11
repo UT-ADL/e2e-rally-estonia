@@ -67,8 +67,8 @@ class Trainer:
                 progress_bar.set_description(f'{best_loss_marker}epoch {epoch + 1}'
                                              f' | train loss: {train_loss:.4f}'
                                              f' | valid loss: {valid_loss:.4f}'
-                                             f' | whiteness: {whiteness:4f}'
-                                             f' | mae: {mae:4f}')
+                                             f' | whiteness: {whiteness:.4f}'
+                                             f' | mae: {mae:.4f}')
             elif self.target_name == "waypoints":
                 first_wp_mae = metrics['first_wp_mae']
                 first_wp_whiteness = metrics['first_wp_whiteness']
@@ -78,11 +78,11 @@ class Trainer:
                 progress_bar.set_description(f'{best_loss_marker}epoch {epoch + 1}'
                                              f' | train loss: {train_loss:.4f}'
                                              f' | valid loss: {valid_loss:.4f}'
-                                             f' | 1_mae: {first_wp_mae:4f}'
-                                             f' | 1_whiteness: {first_wp_whiteness:4f}'
-                                             f' | last_mae: {last_wp_mae:4f}'
-                                             f' | last_whiteness: {last_wp_whiteness:4f}')
-                                             #f' | frechet: {frechet_distance:4f}')
+                                             f' | 1_mae: {first_wp_mae:.4f}'
+                                             f' | 1_whiteness: {first_wp_whiteness:.4f}'
+                                             f' | last_mae: {last_wp_mae:.4f}'
+                                             f' | last_whiteness: {last_wp_whiteness:.4f}')
+                                             #f' | frechet: {frechet_distance:.4f}')
 
 
             if self.wandb_logging:
@@ -175,20 +175,9 @@ class Trainer:
     def predict_batch(self, model, data, target_values, condition_mask, criterion):
         pass
 
+    @abstractmethod
     def predict(self, model, dataloader):
-        all_predictions = []
-        model.eval()
-
-        # with torch.no_grad():
-        #     progress_bar = tqdm(total=len(dataloader), smoothing=0)
-        #     progress_bar.set_description("Model predictions")
-        #     for i, (data, target_values, condition_mask) in enumerate(dataloader):
-        #         condition_mask = condition_mask.to(self.device)
-        #         predictions = self.predict_batch(model, data, condition_mask)
-        #         all_predictions.extend(predictions.cpu().squeeze().numpy())
-        #         progress_bar.update(1)
-
-        return np.array(all_predictions)
+        pass
 
     def evaluate(self, model, iterator, criterion, progress_bar, epoch, train_loss):
         epoch_loss = 0.0
@@ -211,6 +200,23 @@ class Trainer:
 
 class ControlTrainer(Trainer):
 
+    def predict(self, model, dataloader):
+        all_predictions = []
+        model.eval()
+
+        with torch.no_grad():
+            progress_bar = tqdm(total=len(dataloader), smoothing=0)
+            progress_bar.set_description("Model predictions")
+            for i, (data, target_values, condition_mask) in enumerate(dataloader):
+                inputs = data['image'].to(self.device)
+                turn_signal = data['turn_signal']
+                control = F.one_hot(turn_signal, 3).to(self.device)
+                predictions = model(inputs, control)
+                all_predictions.extend(predictions.cpu().squeeze().numpy())
+                progress_bar.update(1)
+
+        return np.array(all_predictions)
+
     def predict_batch(self, model, data, target_values, condition_mask, criterion):
         inputs = data['image'].to(self.device)
         target_values = target_values.to(self.device)
@@ -228,6 +234,23 @@ class ControlTrainer(Trainer):
 
 
 class ConditionalTrainer(Trainer):
+
+    def predict(self, model, dataloader):
+        all_predictions = []
+        model.eval()
+
+        with torch.no_grad():
+            progress_bar = tqdm(total=len(dataloader), smoothing=0)
+            progress_bar.set_description("Model predictions")
+            for i, (data, target_values, condition_mask) in enumerate(dataloader):
+                inputs = data['image'].to(self.device)
+                predictions = model(inputs)
+                masked_predictions = predictions[condition_mask == 1]
+                masked_predictions = masked_predictions.reshape(predictions.shape[0], -1)
+                all_predictions.extend(masked_predictions.cpu().squeeze().numpy())
+                progress_bar.update(1)
+
+        return np.array(all_predictions)
 
     def predict_batch(self, model, data, target_values, condition_mask, criterion):
         inputs = data['image'].to(self.device)
