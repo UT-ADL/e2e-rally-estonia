@@ -1,15 +1,23 @@
-# WP4 End-to-End Driving using Nvidia cameras
+# End-to-End Driving
 
-This repository contains code to train end-to-end model using Rally Estonia 2020 dataset. Only steering angle
-is predicted using front wide camera. Throttle is not predicted and must be controlled using other means.
+This repository contains code to train end-to-end model using Rally Estonia dataset. 
+
+Following input modalities are supported:
+- Nvidia RGB cameras (only front wide camera used currently)
+- Ouster LiDAR range, ambient, intensity image
+![camera_crop](./media/camera-crops.png "Camera crop")
+
+![camera_crop](./media/summer_lidar_crop.jpg "Summer lidar crop")
+
+Following output modalities are supported:
+- Steering angle
+- Trajectory waypoints (longitudinal part fixed)
+
+Only lateral control (steering) is predicted, longitudinal control (throttle) is not predicted and must be controlled using other means.
 
 ## Dataset
 
-For information about dataset, check [_data extraction README_](data_extract/README.md).
-
-Notebook `check_crop.ipynb` can be used to adjust the crop. 
-
-![crop](./media/camera-crops.png "Front wide camera crop")
+Before training a model, dataset needs to be downloaded and prepared . See [_dataloading_](./dataloading/README.md) manual for this. 
 
 ## Training
 
@@ -18,53 +26,44 @@ Notebook `check_crop.ipynb` can be used to adjust the crop.
 Environment can set up using conda by following commands:
 
 ```bash
-# set up pytorch environment
-conda create -n e2e pytorch torchvision cudatoolkit=11.1 jupyter pandas matplotlib tqdm scikit-learn scikit-image wandb onnx -c pytorch -c nvidia
+# Set up Pytorch environment
+conda create -n e2e pytorch torchvision cudatoolkit=11.1 jupyter pandas matplotlib tqdm scikit-learn scikit-image onnx -c pytorch -c nvidia
 conda activate e2e
 
-# install opencv and moviepy for visualising predictions, these are not needed for training
+# Install TensorRT and pycuda
+pip install nvidia-tensorrt==7.2.3.4
+pip install 'pycuda<2021.1'
+
+# Wandb
+pip install wandb
+
+# For visualising predictions
 pip install opencv-contrib-python
 # need to use specific version of moviepy as newer version did not work
 pip install moviepy==1.0.0 
 ```
 
-Download tensorrt (version?) from nvidia web site.
-sudo dpkg -i nv-tensorrt-repo-${os}-${tag}_1-1_amd64.deb
-sudo apt-key add /var/nv-tensorrt-repo-${os}-${tag}/7fa2af80.pub
-sudo apt-get update
-sudo apt-get install tensorrt
-
-
-Alternative approach is to recreate environment from exported `environment.yml`:
-```bash
-conda env create -f environment.yml
-```
-
 ### Run training
 
-*PilotNet* model can be trained by running `train_pilotnet.ipynb` notebook. Make sure to set `root_path` to directory
-containing extracted bag files.
+Model can be trained using following command:
 
-There is no bash script to run training, but it should be fairly easy to create from the notebook when the need arises. 
+```bash
+python train.py --input-modality nvidia-camera --output-modality steering_angle --patience 10 --max-epochs 100 --model-name steering-angle --model-type pilotnet-conditional --wandb-project summer-models-6 --dataset-folder <path to extracted dataset>
+```
+
+Use `--input-modality` parameter to train using camera or lidar images.
+
+Use `--output-modality` parameter to use different prediction targets like steering angle or trajectory waypoints.
+
+Use `--model-type` parameter to use different model architectures like `pilotnet-conditional` and `pilotnet-control`.
+
+Use `--wandb-project` parameter to use log using W&B. To use without W&B, just omit this parameter. 
 
 ### Visualising results
 
-Notebook `test_tensorrt_model.ipynb` can be used to test trained model:
-- compare predicted angles to ground truth angles
-- compare performance of TensorRT and PyTorch models.
-- create video visualising predicted and ground truth angles
+To visualise trained models, use visualising scripts. Check out [visualising manual](./viz/README.md) for this.  
 
 ![visualisation](./media/visualisation.png "visualisation")
 
-## Models
-
-*models* directory contains pretrained models. All models are trained until validation loss stops to improve for 10 epochs.
-
-*best.pt* is model with the smallest validation loss, *best.onxx* is the same model saved into ONNX format. *last.pt* is model
-saved after last training epoch.
-
-- *wide-v1* - middle wide angle camera (A0) trained on only Sulaoja track
-- *wide-v2* - middle wide angle camera (A0) trained on all tracks
-- *wide-aug-v1* - middle wide angle camera (A0) with heuristic augmentation from side cameras (A1, A2) trained on only Sulaoja track
-- *wide-aug-v2* - middle wide angle camera (A0) with Stanley-like augmentation from side cameras (A1, A2) trained on only Sulaoja track
-- *wide-aug-v3* - middle wide angle camera (A0) with Stanley-like augmentation from side cameras (A1, A2) trained on all tracks
+## Sub projects
+- [_velocity_model_](velocity_model/README.md) - logitudinal model using predriven human trajectory
