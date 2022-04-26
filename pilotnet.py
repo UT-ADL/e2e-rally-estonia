@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
 
-"""
-Network from 'End to End Learning for Self-Driving Cars' paper:
-https://arxiv.org/abs/1604.07316
 
-Conditonal control is concatenated with input features to each policy branchy
-"""
 class PilotNet(nn.Module):
+    """
+    Network from 'End to End Learning for Self-Driving Cars' paper:
+    https://arxiv.org/abs/1604.07316
+
+    Conditonal control is concatenated with input features to each policy branchy
+    """
 
     def __init__(self, n_input_channels=3):
         super(PilotNet, self).__init__()
@@ -49,13 +50,13 @@ class PilotNet(nn.Module):
         return x
 
 
-"""
-Network from 'End-to-end Driving via Conditional Imitation Learning' paper:
-https://arxiv.org/abs/1710.02410
-
-There is separate policy branch for each road selection, by default 3 for going straight, turning left and right.
-"""
 class PilotNetConditional(nn.Module):
+    """
+    Network from 'End-to-end Driving via Conditional Imitation Learning' paper:
+    https://arxiv.org/abs/1710.02410
+
+    There is separate policy branch for each road selection, by default 3 for going straight, turning left and right.
+    """
 
     def __init__(self, n_input_channels=3, n_outputs=1, n_branches=1):
         super(PilotNetConditional, self).__init__()
@@ -100,13 +101,13 @@ class PilotNetConditional(nn.Module):
         return x
 
 
-"""
-Network from 'Urban Driving with Conditional Imitation Learning' paper:
-https://arxiv.org/abs/1912.00177
-
-Conditonal control is concatenated with input features to each policy branchy
-"""
 class PilotnetControl(nn.Module):
+    """
+    Network from 'Urban Driving with Conditional Imitation Learning' paper:
+    https://arxiv.org/abs/1912.00177
+
+    Conditonal control is concatenated with input features to each policy branchy
+    """
 
     def __init__(self, n_input_channels=3, n_outputs=1):
         super(PilotnetControl, self).__init__()

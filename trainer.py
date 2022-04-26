@@ -163,7 +163,7 @@ class Trainer:
         for i, (data, target_values, condition_mask) in enumerate(loader):
             optimizer.zero_grad()
 
-            predictions, loss = self.predict_batch(model, data, target_values, condition_mask, criterion)
+            predictions, loss = self.train_batch(model, data, target_values, condition_mask, criterion)
 
             loss.backward()
             optimizer.step()
@@ -177,7 +177,7 @@ class Trainer:
 
 
     @abstractmethod
-    def predict_batch(self, model, data, target_values, condition_mask, criterion):
+    def train_batch(self, model, data, target_values, condition_mask, criterion):
         pass
 
     @abstractmethod
@@ -191,7 +191,7 @@ class Trainer:
 
         with torch.no_grad():
             for i, (data, target_values, condition_mask) in enumerate(iterator):
-                predictions, loss = self.predict_batch(model, data, target_values, condition_mask, criterion)
+                predictions, loss = self.train_batch(model, data, target_values, condition_mask, criterion)
                 epoch_loss += loss.item()
                 all_predictions.extend(predictions.cpu().squeeze().numpy())
 
@@ -201,6 +201,30 @@ class Trainer:
         total_loss = epoch_loss / len(iterator)
         result = np.array(all_predictions)
         return total_loss, result
+
+
+class PilotNetTrainer(Trainer):
+
+    def predict(self, model, dataloader):
+        all_predictions = []
+        model.eval()
+
+        with torch.no_grad():
+            progress_bar = tqdm(total=len(dataloader), smoothing=0)
+            progress_bar.set_description("Model predictions")
+            for i, (data, target_values, condition_mask) in enumerate(dataloader):
+                inputs = data['image'].to(self.device)
+                predictions = model(inputs)
+                all_predictions.extend(predictions.cpu().squeeze().numpy())
+                progress_bar.update(1)
+
+        return np.array(all_predictions)
+
+    def train_batch(self, model, data, target_values, condition_mask, criterion):
+        inputs = data['image'].to(self.device)
+        target_values = target_values.to(self.device)
+        predictions = model(inputs)
+        return predictions, criterion(predictions, target_values)
 
 
 class ControlTrainer(Trainer):
@@ -222,7 +246,7 @@ class ControlTrainer(Trainer):
 
         return np.array(all_predictions)
 
-    def predict_batch(self, model, data, target_values, condition_mask, criterion):
+    def train_batch(self, model, data, target_values, condition_mask, criterion):
         inputs = data['image'].to(self.device)
         target_values = target_values.to(self.device)
         turn_signal = data['turn_signal']
@@ -257,7 +281,7 @@ class ConditionalTrainer(Trainer):
 
         return np.array(all_predictions)
 
-    def predict_batch(self, model, data, target_values, condition_mask, criterion):
+    def train_batch(self, model, data, target_values, condition_mask, criterion):
         inputs = data['image'].to(self.device)
         target_values = target_values.to(self.device)
         condition_mask = condition_mask.to(self.device)

@@ -12,6 +12,7 @@ from pathlib import Path
 from argparse import ArgumentParser
 from tf.transformations import euler_from_quaternion
 
+# TODO: rename file to dataset_extract or something similar
 
 class NvidiaDriveImporter:
 
@@ -59,9 +60,9 @@ class NvidiaDriveImporter:
 
         # OUSTER images
         if extract_lidar:
-            self.lidar_amb_c = '/lidar_center/ambient_image'
-            self.lidar_int_c = '/lidar_center/intensity_image'
-            self.lidar_rng_c = '/lidar_center/range_image'
+            self.lidar_amb_c = '/lidar_front/ambient_image'
+            self.lidar_int_c = '/lidar_front/intensity_image'
+            self.lidar_rng_c = '/lidar_front/range_image'
             self.lidar_topics = [self.lidar_amb_c, self.lidar_int_c, self.lidar_rng_c]
             self.topics = self.topics + self.lidar_topics
 
@@ -252,7 +253,7 @@ class NvidiaDriveImporter:
 
 
         if self.exract_lidar:
-            lidar_df = pd.DataFrame(data=lidar_dict)
+            lidar_df = pd.DataFrame(data=lidar_dict, columns=["timestamp", "lidar_filename", "autonomous"])
             self.create_timestamp_index(lidar_df)
 
             merged_lidar = functools.reduce(lambda left, right:

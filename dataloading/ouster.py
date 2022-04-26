@@ -8,19 +8,15 @@ from torchvision import transforms
 from torch.utils.data import Dataset
 
 
-
 class OusterCrop(object):
-    def __init__(self):
-        self.fov = 256
-        self.top = 54
-        self.left = 256 - self.fov // 2
+    def __init__(self, xmin=384, ymin=54):
         self.height = 68
         self.width = 264
+        self.xmin = xmin
+        self.ymin = ymin
 
     def __call__(self, data):
-        # TODO: clean up this mess
-        data["image"] = data["image"][:, :, 256:-256]
-        data["image"] = data["image"][..., self.top:self.top + self.height, self.left:self.left + self.width]
+        data["image"] = data["image"][..., self.ymin:self.ymin + self.height, self.xmin:self.xmin + self.width]
         return data
 
 
@@ -152,6 +148,7 @@ class OusterTrainDataset(OusterDataset):
         tr = transforms.Compose([OusterCrop(), OusterNormalize()])
 
         super().__init__(train_paths, tr, filter_turns=filter_turns, channel=channel)
+
 
 class OusterValidationDataset(OusterDataset):
     def __init__(self, root_path, filter_turns=False, channel=None):

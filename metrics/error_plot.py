@@ -2,7 +2,7 @@ from pathlib import Path
 
 from matplotlib import pyplot as plt
 
-from closed_loop_metrics import calculate_lateral_errors, read_frames
+from metrics import calculate_lateral_errors, read_frames_driving
 
 
 def draw_error_plot(ax, model_frames, expert_frames, title=None):
@@ -26,20 +26,20 @@ if __name__ == "__main__":
     root_path = Path("/media/romet/data2/datasets/rally-estonia/dataset")
 
     datasets = {
-        'autumn-v3': read_frames([root_path / '2021-11-03-12-35-19_e2e_rec_elva_autumn-v3']),
-        'wide-v2': read_frames([root_path / '2021-11-03-13-13-16_e2e_rec_elva_wide-v2']),
-        'autumn-v1': read_frames([root_path / '2021-11-03-13-51-53_e2e_rec_elva_autumn-v1',
+        'autumn-v3': read_frames_driving([root_path / '2021-11-03-12-35-19_e2e_rec_elva_autumn-v3']),
+        'wide-v2': read_frames_driving([root_path / '2021-11-03-13-13-16_e2e_rec_elva_wide-v2']),
+        'autumn-v1': read_frames_driving([root_path / '2021-11-03-13-51-53_e2e_rec_elva_autumn-v1',
                                   root_path / '2021-11-03-14-02-07_e2e_rec_elva_autumn-v1_continue'])
     }
 
     datasets_backwards = {
-        'autumn-v3': read_frames([root_path / '2021-11-03-12-53-38_e2e_rec_elva_back_autumn-v3']),
-        'wide-v2': read_frames([root_path / '2021-11-03-13-30-48_e2e_rec_elva_back_wide-v2']),
-        'autumn-v1': read_frames([root_path / '2021-11-03-14-12-10_e2e_rec_elva_back_autumn-v1'])
+        'autumn-v3': read_frames_driving([root_path / '2021-11-03-12-53-38_e2e_rec_elva_back_autumn-v3']),
+        'wide-v2': read_frames_driving([root_path / '2021-11-03-13-30-48_e2e_rec_elva_back_wide-v2']),
+        'autumn-v1': read_frames_driving([root_path / '2021-11-03-14-12-10_e2e_rec_elva_back_autumn-v1'])
     }
 
-    expert_frames = read_frames([root_path / '2021-10-26-10-49-06_e2e_rec_ss20_elva'], "nvidia")
-    expert_frames_back = read_frames([root_path / '2021-10-26-11-08-59_e2e_rec_ss20_elva_back'])
+    expert_frames = read_frames_driving([root_path / '2021-10-26-10-49-06_e2e_rec_ss20_elva'], "nvidia")
+    expert_frames_back = read_frames_driving([root_path / '2021-10-26-11-08-59_e2e_rec_ss20_elva_back'])
 
     fig, ax = plt.subplots(3, 2, figsize=(15, 30))
 

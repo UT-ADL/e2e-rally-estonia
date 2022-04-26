@@ -167,7 +167,7 @@ def read_frames_expert(dataset_paths, filename):
     return frames_df
 
 
-def read_frames_driving(dataset_paths, filename):
+def read_frames_driving(dataset_paths, filename="nvidia_frames.csv"):
     datasets = [pd.read_csv(dataset_path / filename) for dataset_path in dataset_paths]
     frames_df = pd.concat(datasets)
     frames_df = frames_df[['steering_angle', 'cmd_steering_angle', 'position_x', 'position_y', 'autonomous']].dropna()
