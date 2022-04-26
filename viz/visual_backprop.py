@@ -1,5 +1,6 @@
 import argparse
 import math
+import shutil
 import sys
 from collections import deque
 from pathlib import Path
@@ -9,15 +10,70 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.transforms.functional as F
+from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+from skimage import io, img_as_ubyte
 from torch.nn.functional import one_hot
+from tqdm import tqdm
 
 from dataloading.nvidia import NvidiaDataset
 from dataloading.ouster import OusterDataset
 from metrics.frechet_distance import frdist
 from pilotnet import PilotNet, PilotNetConditional, PilotnetControl
+from trajectory import calculate_steering_angle
 
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
+
+def parse_arguments():
+    argparser = argparse.ArgumentParser()
+    
+    argparser.add_argument(
+        '--video',
+        default=False,
+        action='store_true',
+        help="Create video instead of analysing manually."
+    )
+    argparser.add_argument(
+        '--model-name',
+        required=True,
+        help='Name of the model used for predictions.'
+    )
+    argparser.add_argument(
+        '--model-type',
+        required=False,
+        default="pilotnet",
+        choices=['pilotnet', 'pilotnet-conditional', 'pilotnet-control'],
+    )
+    argparser.add_argument(
+        '--dataset-name',
+        required=True,
+        help='Name of the dataset used for predictions.'
+    )
+    argparser.add_argument(
+        '--input-modality',
+        required=False,
+        default="nvidia-camera",
+        choices=['nvidia-camera', 'ouster-lidar'],
+    )
+    argparser.add_argument(
+        '--output-modality',
+        required=False,
+        default="steering_angle",
+        choices=["steering_angle", "waypoints"],
+        help="Choice of output modalities to train model with."
+    )
+    argparser.add_argument(
+        '--num-waypoints',
+        type=int,
+        default=10
+    )
+    argparser.add_argument(
+        '--starting-frame',
+        type=int,
+        default=0
+    )
+    return argparser.parse_args()
+
 
 """
 Implementation of network visualisation method from 'VisualBackProp: efficient visualization of CNNs' paper: 
@@ -27,7 +83,6 @@ Adapted from:
 https://github.com/javangent/ouster-e2e/blob/4bfafaf764de85f87ac4a4d71d21fbf9a333790f/visual_backprop.py
 https://github.com/mbojarski/VisualBackProp/blob/master/vis.lua
 """
-
 class VisualBackprop:
     def outer_hook(self, activations):
         def hook(module, inp, out):
@@ -196,6 +251,7 @@ def getImageWithOverlay(model, frame, output_modality, model_type):
 
     vis = visual_backprop.getImagesFull(model, model_input)[0]
     result = cv2.vconcat([img, vis])
+    result = cv2.normalize(result, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
 
     scale_percent = 500  # percent of original size
     width = int(result.shape[1] * scale_percent / 100)
@@ -226,7 +282,7 @@ def draw_waypoints_overlay(control, frame, image, model, model_type, resized):
     # cv2.putText(resized, 'True: {:.4f}, {:.4f}, {:.4f}, {:.4f}, {:.4f}'.format(
     #     true_waypoints[3], true_waypoints[7], true_waypoints[11], true_waypoints[15], true_waypoints[19]), (10, 30),
     #             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    cv2.putText(resized, 'True: {:.2f} deg, {:.2f} km/h'.format(steering_angle, 3.6 * vehicle_speed), (10, 30),
+    cv2.putText(resized, 'True: {:.4f} deg, {:.2f} km/h'.format(steering_angle, 3.6 * vehicle_speed), (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, GREEN, 2, cv2.LINE_AA)
     # turn signal
     turn_signal_map = {
@@ -234,9 +290,9 @@ def draw_waypoints_overlay(control, frame, image, model, model_type, resized):
         2: "left",
         0: "right"
     }
-    cv2.putText(resized, 'turn signal: {}'.format(turn_signal_map.get(turn_signal, "unknown")), (10, 70),
+    cv2.putText(resized, 'turn signal: {}'.format(turn_signal_map.get(turn_signal, "unknown")), (10, 110),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, GREEN, 2, cv2.LINE_AA)
-    cv2.putText(resized, 'frame: {}'.format(frame_id), (10, 110),
+    cv2.putText(resized, 'frame: {}'.format(frame_id), (10, 150),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, GREEN, 2, cv2.LINE_AA)
     if model_type == "pilotnet-conditional":
         n_branches = 3
@@ -247,14 +303,25 @@ def draw_waypoints_overlay(control, frame, image, model, model_type, resized):
         predicted_trajectory = model(image.unsqueeze(0), control).cpu().detach().numpy()[0]
     frechet_distance = frdist(predicted_trajectory.reshape(-1, 2), true_waypoints.reshape(-1, 2))
     frechet_color = RED if frechet_distance > 5.0 else GREEN
-    cv2.putText(resized, 'Frechet distance: {:.4f}'.format(frechet_distance), (10, 150),
+    cv2.putText(resized, 'Frechet distance: {:.4f}'.format(frechet_distance), (10, 190),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, frechet_color, 2, cv2.LINE_AA)
     first_wp_error = math.hypot(predicted_trajectory[0] - true_waypoints[0],
                                 predicted_trajectory[1] - true_waypoints[1])
     first_wp_color = RED if first_wp_error > 0.25 else GREEN
-    cv2.putText(resized, '1st distance: {:.4f}'.format(first_wp_error), (10, 190),
+    cv2.putText(resized, '1st distance: {:.4f}'.format(first_wp_error), (10, 230),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, first_wp_color, 2, cv2.LINE_AA)
     draw_trajectory(resized, predicted_trajectory, RED)
+
+    steering_angle_wp = [0.0, 0.0]
+    steering_angle_wp.extend(predicted_trajectory[:10])
+    #steering_angle_wp.extend(true_waypoints[:10])
+    pred_steering_angle = math.degrees(calculate_steering_angle(steering_angle_wp, ref_distance=8))
+    #pred_steering_angle = math.degrees(np.arctan(true_waypoints[3] / true_waypoints[2])) * 14.7
+    cv2.putText(resized, 'Pred: {:.4f} deg'.format(pred_steering_angle), (10, 70),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, RED, 2, cv2.LINE_AA)
+
+    draw_steering_wheel(resized, pred_steering_angle, steering_angle)
+
     # cv2.putText(resized, 'Pred: {:.4f}, {:.4f}, {:.4f}, {:.4f}, {:.4f}'.format(
     #     selected_trajectory[3], selected_trajectory[7], selected_trajectory[11], selected_trajectory[15], selected_trajectory[19]), (10, 70),
     #             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2,
@@ -293,65 +360,41 @@ def draw_steering_angle_overlay(example, frame, model, resized):
     }
     cv2.putText(resized, 'turn signal: {}'.format(turn_signal_map.get(turn_signal, "unknown")), (10, 110),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    # draw steering wheel
+    draw_steering_wheel(resized, pred_steering_angle, steering_angle)
+
+
+def draw_steering_wheel(frame, pred_steering_angle, true_steering_angle):
     radius = 100
-    steering_pos = (150, 270)
-    cv2.circle(resized, steering_pos, radius, (255, 255, 255), 7)
-    draw_steering_angle(resized, steering_angle, radius, steering_pos, 13, (0, 255, 0))
-    draw_steering_angle(resized, pred_steering_angle, radius, steering_pos, 9, (0, 0, 255))
+    steering_pos = (150, 370)
+    cv2.circle(frame, steering_pos, radius, (255, 255, 255), 7)
+    draw_steering_angle(frame, true_steering_angle, radius, steering_pos, 13, (0, 255, 0))
+    draw_steering_angle(frame, pred_steering_angle, radius, steering_pos, 9, (0, 0, 255))
+
+
+def draw_driving_frames(dataset, output_modality, model_type, model_name):
+    temp_frames_folder = Path('temp_video')
+    shutil.rmtree(temp_frames_folder, ignore_errors=True)
+    temp_frames_folder.mkdir()
+
+    print(f"Drawing driving frames with {output_modality}")
+    t = tqdm(enumerate(dataset), total=len(dataset))
+    t.set_description(dataset.name)
+    for frame_index, (data, target_values, condition_mask) in t:
+        img = getImageWithOverlay(model, data, output_modality, model_type)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        io.imsave(f"{temp_frames_folder}/{frame_index + 1:05}.jpg", img)
+
+    p = Path(temp_frames_folder).glob('**/*.jpg')
+    image_list = sorted([str(x) for x in p if x.is_file()])
+
+    fps = 30
+    clip = ImageSequenceClip(image_list, fps=fps)
+    clip.write_videofile(f"{model_name}.mp4")
+
 
 
 if __name__ == "__main__":
-
-    argparser = argparse.ArgumentParser()
-
-    argparser.add_argument(
-        '--model-name',
-        required=True,
-        help='Name of the model used for predictions.'
-    )
-
-    argparser.add_argument(
-        '--model-type',
-        required=False,
-        default="pilotnet",
-        choices=['pilotnet', 'pilotnet-conditional', 'pilotnet-control'],
-    )
-
-    argparser.add_argument(
-        '--dataset-name',
-        required=True,
-        help='Name of the dataset used for predictions.'
-    )
-
-    argparser.add_argument(
-        '--input-modality',
-        required=False,
-        default="nvidia-camera",
-        choices=['nvidia-camera', 'ouster-lidar'],
-    )
-
-    argparser.add_argument(
-        '--output-modality',
-        required=False,
-        default="steering_angle",
-        choices=["steering_angle", "waypoints"],
-        help="Choice of output modalities to train model with."
-    )
-
-    argparser.add_argument(
-        '--num-waypoints',
-        type=int,
-        default=10
-    )
-
-    argparser.add_argument(
-        '--starting-frame',
-        type=int,
-        default=0
-    )
-
-    args = argparser.parse_args()
+    args = parse_arguments()
 
     root_path = Path("/home/romet/data2/datasets/rally-estonia/dataset-new-small/summer2021")
     data_paths = [root_path / args.dataset_name]
@@ -378,22 +421,25 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model.eval()
+    
+    if args.video:
+        draw_driving_frames(dataset, args.output_modality, args.model_type, args.model_name)
+    else:
+        deq = deque(range(0, len(dataset)))
+        deq.rotate(-args.starting_frame)
+        vis = getImageWithOverlay(model, dataset[deq[0]][0], args.output_modality, args.model_type)
 
-    deq = deque(range(0, len(dataset)))
-    deq.rotate(-args.starting_frame)
-    vis = getImageWithOverlay(model, dataset[deq[0]][0], args.output_modality, args.model_type)
+        cv2.namedWindow('vis', cv2.WINDOW_AUTOSIZE)
+        window_scale = 5
+        cv2.resizeWindow('image', window_scale*2*68, window_scale*264)
 
-    cv2.namedWindow('vis', cv2.WINDOW_AUTOSIZE)
-    window_scale = 5
-    cv2.resizeWindow('image', window_scale*2*68, window_scale*264)
-
-    while cv2.getWindowProperty('vis', cv2.WND_PROP_VISIBLE) >= 1:
-        cv2.imshow('vis', vis)
-        k = cv2.waitKey(10)
-        if k == ord('j'):
-            deq.rotate(1)
-            vis = getImageWithOverlay(model, dataset[deq[0]][0], args.output_modality, args.model_type)
-        elif k == ord('k'):
-            deq.rotate(-1)
-            vis = getImageWithOverlay(model, dataset[deq[0]][0], args.output_modality, args.model_type)
+        while cv2.getWindowProperty('vis', cv2.WND_PROP_VISIBLE) >= 1:
+            cv2.imshow('vis', vis)
+            k = cv2.waitKey(10)
+            if k == ord('j'):
+                deq.rotate(1)
+                vis = getImageWithOverlay(model, dataset[deq[0]][0], args.output_modality, args.model_type)
+            elif k == ord('k'):
+                deq.rotate(-1)
+                vis = getImageWithOverlay(model, dataset[deq[0]][0], args.output_modality, args.model_type)
 
