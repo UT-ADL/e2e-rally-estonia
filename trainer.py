@@ -8,6 +8,7 @@ import onnx
 import torch
 from torch.nn import functional as F
 import wandb
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm.auto import tqdm
 
 from metrics.metrics import calculate_open_loop_metrics, calculate_trajectory_open_loop_metrics
@@ -40,6 +41,8 @@ class Trainer:
         best_valid_loss = float('inf')
         epochs_of_no_improve = 0
 
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.1, verbose=True)
+
         for epoch in range(n_epoch):
 
             progress_bar = tqdm(total=len(train_loader), smoothing=0)
@@ -47,6 +50,8 @@ class Trainer:
 
             progress_bar.reset(total=len(valid_loader))
             valid_loss, predictions = self.evaluate(model, valid_loader, criterion, progress_bar, epoch, train_loss)
+
+            scheduler.step(valid_loss)
 
             if valid_loss < best_valid_loss:
                 best_valid_loss = valid_loss
