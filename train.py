@@ -340,7 +340,7 @@ def load_data(train_conf, augment_conf):
     elif train_conf.batch_sampler == 'random':
         train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=True,
                                                    num_workers=train_conf.num_workers, pin_memory=True,
-                                             persistent_workers=True)
+                                                   persistent_workers=True)
     else:
         print(f"Unknown batch sampler {train_conf.batch_sampler}")
         sys.exit()
@@ -353,10 +353,15 @@ def load_data(train_conf, augment_conf):
 
 
 def calculate_weights(df):
-    optimized_bins = np.array([df["steering_angle"].min() - 0.00001, -2.78245811e+00, -1.02905812e+00, -4.43559368e-01,
-                               -1.64549582e-01, 6.90239861e-03, 1.69872354e-01, 4.35963640e-01,
-                               9.63913148e-01, 2.70831896e+00, df["steering_angle"].max() + 0.00001])
-    bin_ranges = pd.cut(df["steering_angle"], optimized_bins, labels=np.arange(1, 11))
+    # optimized_bins = np.array([df["steering_angle"].min() - 0.00001, -2.78245811e+00, -1.02905812e+00, -4.43559368e-01,
+    #                            -1.64549582e-01, 6.90239861e-03, 1.69872354e-01, 4.35963640e-01,
+    #                            9.63913148e-01, 2.70831896e+00, df["steering_angle"].max() + 0.00001])
+
+    optimized_bins = np.array([df["steering_angle"].min() - 0.00001,
+                               -1.121, -0.176, 0.206, 1.088,
+                               df["steering_angle"].max() + 0.00001])
+
+    bin_ranges = pd.cut(df["steering_angle"], optimized_bins, labels=np.arange(1, 6))
     df["bins"] = bin_ranges
     counts = bin_ranges.value_counts(sort=False)
     widths = np.diff(optimized_bins)
