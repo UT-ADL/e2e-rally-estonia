@@ -1,0 +1,29 @@
+#!/bin/bash
+#SBATCH --job-name="Extract driving data from bag file"
+#SBATCH --time=20:00:00
+#SBATCH --cpus-per-task=1
+#SBATCH --partition=main
+
+#SBATCH --array=0-13
+BAGS=(
+    '2022-04-28-11-59-00_e2e_elva_forw_inTrain_camera_0.8.bag' \
+    '2022-04-28-12-10-19_e2e_elva_back_inTrain_camera_0.8.bag' \
+    '2022-04-28-13-02-25_e2e_elva_forw_inTrain_lidar_x517_y45_0.8.bag' \
+    '2022-04-28-13-14-00_e2e_elva_back_inTrain_lidar_x517_y45_0.8.bag' \
+    '2022-04-28-13-37-48_e2e_elva_forw_BGR_inTrain_0.8.bag' \
+    '2022-04-28-13-48-48_e2e_elva_back_BGR_inTrain_0.8.bag' \
+    '2022-04-28-15-23-45_e2e_elva_RGB_forw_0.8.bag' \
+    '2022-04-28-15-35-09_e2e_elva_RGB_back_0.8.bag' \
+    '2022-04-28-15-46-30_e2e_elva_BGR_forw_0.8.bag' \
+    '2022-04-28-15-57-16_e2e_elva_BGR_back_0.8.bag' \
+    '2022-04-28-16-09-27_e2e_elva_lidar_forw_x45_y517_0.8.bag' \
+    '2022-04-28-16-20-09_e2e_elva_lidar_back_x45_y517_0.8.bag' \
+    '2022-04-28-16-31-42_e2e_elva_camera_v1_forw_0.8.bag' \
+    '2022-04-28-16-42-14_e2e_elva_camera_v1_back_0.8.bag'
+    )
+
+module load any/python/3.8.3-conda
+source activate ros2
+cd /gpfs/space/home/rometaid/nvidia-e2e/data_extract
+
+srun ./extract_rocket.sh ${BAGS[$SLURM_ARRAY_TASK_ID]}  /gpfs/space/projects/Bolt/dataset-paper

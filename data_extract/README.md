@@ -20,8 +20,7 @@ See more at https://medium.com/robostack/cross-platform-conda-packages-for-ros-f
 Dataset can be extracted from bags running `data_extract/extract.sh` bash script: 
 
 ```bash
-cd data_extract
-python ./image_extractor.py --bag-file=/media/romet/data2/datasets/rally-estonia/bags/2021-05-28-15-19-48_e2e_sulaoja_20_30.bag --extract-dir=/media/romet/data2/datasets/rally-estonia/test-dataset
+python -m data_extract.image_extractor --bag-file=/media/romet/data2/datasets/rally-estonia/bags/2021-05-28-15-19-48_e2e_sulaoja_20_30.bag --extract-dir=/media/romet/data2/datasets/rally-estonia/test-dataset
 ```
 Check the script for additional arguments.
 
