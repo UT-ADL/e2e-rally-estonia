@@ -42,4 +42,23 @@ python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-mo
 echo "Camera Winter v3"
 python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality nvidia-camera --drive-datasets 2022-02-02-11-58-48_e2e_rec_elva_winter_camera-v3_forw_08
 
+echo "Camera in train spring"
+python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality nvidia-camera --drive-datasets 2022-04-28-11-59-00_e2e_elva_forw_inTrain_camera_0.8 2022-04-28-12-10-19_e2e_elva_back_inTrain_camera_0.8
 
+echo "Lidar in train spring x517 y45"
+python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality nvidia-camera --drive-datasets 2022-04-28-13-02-25_e2e_elva_forw_inTrain_lidar_x517_y45_0.8 2022-04-28-13-14-00_e2e_elva_back_inTrain_lidar_x517_y45_0.8
+
+echo "Camera spring in train BGR"
+python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality nvidia-camera --drive-datasets 2022-04-28-13-37-48_e2e_elva_forw_BGR_inTrain_0.8 2022-04-28-13-48-48_e2e_elva_back_BGR_inTrain_0.8
+
+echo "Camera spring RGB"
+python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality nvidia-camera --drive-datasets 2022-04-28-15-23-45_e2e_elva_RGB_forw_0.8 2022-04-28-15-35-09_e2e_elva_RGB_back_0.8
+
+echo "Camera spring BGR"
+python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality nvidia-camera --drive-datasets 2022-04-28-15-46-30_e2e_elva_BGR_forw_0.8 2022-04-28-15-57-16_e2e_elva_BGR_back_0.8
+
+echo "Lidar in train spring x45 y517"
+python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality nvidia-camera --drive-datasets 2022-04-28-16-09-27_e2e_elva_lidar_forw_x45_y517_0.8 2022-04-28-16-20-09_e2e_elva_lidar_back_x45_y517_0.8
+
+echo "Camera v1 spring"
+python metrics.py --root-path /gpfs/space/projects/Bolt/dataset-paper --input-modality nvidia-camera --drive-datasets 2022-04-28-16-31-42_e2e_elva_camera_v1_forw_0.8 2022-04-28-16-42-14_e2e_elva_camera_v1_back_0.8
