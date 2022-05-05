@@ -22,7 +22,8 @@ from velocity_model.velocity_model import VelocityModel
 
 def create_driving_video(dataset_folder, output_modality):
     dataset_path = Path(dataset_folder)
-    dataset = NvidiaDataset([dataset_path], output_modality=output_modality, n_branches=3)
+    dataset = NvidiaDataset([dataset_path], output_modality=output_modality, n_branches=3,
+                            metadata_file="nvidia_frames.csv")
 
     temp_frames_folder = dataset_path / 'temp'
     shutil.rmtree(temp_frames_folder, ignore_errors=True)

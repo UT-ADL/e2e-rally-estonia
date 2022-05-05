@@ -139,8 +139,10 @@ class NvidiaDataset(Dataset):
     #CAP_WAYPOINTS = 30
 
     def __init__(self, dataset_paths, transform=None, camera="front_wide", name="Nvidia dataset",
-                 filter_turns=False, output_modality="steering_angle", n_branches=1, n_waypoints=6):
+                 filter_turns=False, output_modality="steering_angle", n_branches=1, n_waypoints=6,
+                 metadata_file="nvidia_frames_ext.csv"):
         self.name = name
+        self.metadata_file = metadata_file
         self.dataset_paths = dataset_paths
         if transform:
             self.transform = transform
@@ -170,9 +172,6 @@ class NvidiaDataset(Dataset):
     def __getitem__(self, idx):
         frame = self.frames.iloc[idx]
         image = torchvision.io.read_image(frame["image_path"])
-
-        # image = cv2.imread(frame["image_path"])
-        # image = torch.tensor(image, dtype=torch.uint8).permute(2, 0, 1)
 
         data = {
             'image': image,
@@ -223,9 +222,7 @@ class NvidiaDataset(Dataset):
         return len(self.frames.index)
 
     def read_dataset(self, dataset_path, camera):
-        frames_df = pd.read_csv(dataset_path / "nvidia_frames_ext.csv")
-        #frames_df = pd.read_csv(dataset_path / "nvidia_frames.csv")
-
+        frames_df = pd.read_csv(dataset_path / self.metadata_file)
         frames_df["row_id"] = frames_df.index
 
         # temp hack
