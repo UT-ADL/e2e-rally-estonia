@@ -16,12 +16,13 @@ from tf.transformations import euler_from_quaternion
 
 class NvidiaDriveImporter:
 
-    def __init__(self, bag_files, extract_dir, resize_camera_images,
+    def __init__(self, bag_files, extract_dir, resize_camera_images, crop_camera_images,
                  camera_crop_xmin, camera_crop_xmax, camera_crop_ymin, camera_crop_ymax,
                  resize_scale, extract_side_cameras, extract_lidar, image_type):
         self.bag_files = bag_files
         self.extract_dir = extract_dir
         self.resize_camera_image = resize_camera_images
+        self.crop_camera_images = crop_camera_images
         self.camera_crop_xmin = camera_crop_xmin
         self.camera_crop_xmax = camera_crop_xmax
         self.camera_crop_ymin = camera_crop_ymin
@@ -320,6 +321,11 @@ if __name__ == "__main__":
                         action='store_true',
                         help='Resize camera image for smaller size')
 
+    parser.add_argument("--crop-camera-images",
+                        default=False,
+                        action='store_true',
+                        help='Crop camera image')
+
     parser.add_argument("--resize-scale",
                         type=float,
                         default=0.2,
@@ -370,7 +376,8 @@ if __name__ == "__main__":
     bags = [
         args.bag_file
     ]
-    importer = NvidiaDriveImporter(bags, args.extract_dir, args.resize_camera_images,
+    importer = NvidiaDriveImporter(bags, args.extract_dir,
+                                   args.resize_camera_images, args.crop_camera_images,
                                    args.camera_crop_xmin, args.camera_crop_xmax,
                                    args.camera_crop_ymin, args.camera_crop_ymax,
                                    args.resize_scale,
