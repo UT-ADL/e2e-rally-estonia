@@ -183,7 +183,8 @@ class NvidiaDriveImporter:
                     image_name = f"{msg_timestamp}.{image_type}"
                     camera_dict["filename"].append(str(Path(output_folder.stem) / image_name))
                     cv_img = bridge.compressed_imgmsg_to_cv2(msg)
-                    cv_img = self.crop(cv_img)
+                    if self.crop_camera_images:
+                        cv_img = self.crop(cv_img)
                     if self.resize_camera_image:
                         cv_img = self.resize(cv_img)
                     cv2.imwrite(str(output_folder / image_name), cv_img)
