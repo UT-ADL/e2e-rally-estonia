@@ -215,7 +215,7 @@ if __name__ == "__main__":
         print("Uknown input modality")
         sys.exit()
 
-    export_root_path = Path(args.root_path)
+    export_root_path = Path(args.expert_root_path)
     expert_ds = [export_root_path / dataset_path for dataset_path in args.expert_datasets]
     expert_frames = read_frames_expert(expert_ds, frames_filename)
 
