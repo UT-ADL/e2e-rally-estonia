@@ -181,16 +181,23 @@ if __name__ == "__main__":
     parser.add_argument("--root-path",
                         default="/gpfs/space/projects/Bolt/dataset",
                         help='Path to extracted datasets')
-    parser.add_argument('--expert-datasets',
-                        nargs='+',
-                        default=['2021-10-26-10-49-06_e2e_rec_ss20_elva',
-                                 '2021-10-26-11-08-59_e2e_rec_ss20_elva_back'],
-                        help='Datasets used for ground truth tracjectories.')
+
     parser.add_argument('--drive-datasets',
                         nargs='+',
                         required=True,
                         default=[],
                         help='Datasets used to calculate metrics for.')
+
+    parser.add_argument("--expert-root-path",
+                        default="/gpfs/space/projects/Bolt/dataset",
+                        help='Path to extracted export datasets')
+
+    parser.add_argument('--expert-datasets',
+                        nargs='+',
+                        default=['2021-10-26-10-49-06_e2e_rec_ss20_elva',
+                                 '2021-10-26-11-08-59_e2e_rec_ss20_elva_back'],
+                        help='Datasets used for ground truth tracjectories.')
+
     parser.add_argument('--input-modality',
                         choices=['nvidia-camera', 'ouster-lidar'],
                         default='nvidia-camera',
@@ -208,11 +215,11 @@ if __name__ == "__main__":
         print("Uknown input modality")
         sys.exit()
 
-    root_path = Path(args.root_path)
-
-    expert_ds = [root_path / dataset_path for dataset_path in args.expert_datasets]
+    export_root_path = Path(args.root_path)
+    expert_ds = [export_root_path / dataset_path for dataset_path in args.expert_datasets]
     expert_frames = read_frames_expert(expert_ds, frames_filename)
 
+    root_path = Path(args.root_path)
     drive_ds = [root_path / dataset_path for dataset_path in args.drive_datasets]
     model_frames = read_frames_driving(drive_ds, frames_filename)
 
