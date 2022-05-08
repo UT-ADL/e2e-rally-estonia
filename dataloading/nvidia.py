@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -175,7 +176,6 @@ class NvidiaDataset(Dataset):
         if self.color_space == "rgb":
             image = torchvision.io.read_image(frame["image_path"])
         elif self.color_space == "bgr":
-            print("bgr")
             image = cv2.imread(frame["image_path"])
             image = torch.tensor(image, dtype=torch.uint8).permute(2, 0, 1)
         else:
@@ -231,7 +231,15 @@ class NvidiaDataset(Dataset):
         return len(self.frames.index)
 
     def read_dataset(self, dataset_path, camera):
-        frames_df = pd.read_csv(dataset_path / self.metadata_file)
+        if type(dataset_path) is dict:
+            frames_df = pd.read_csv(dataset_path['path'] / self.metadata_file)
+            len_before_filtering = len(frames_df)
+            frames_df = frames_df.iloc[dataset_path['start']:dataset_path['end']]
+            dataset_path = dataset_path['path']
+        else:
+            frames_df = pd.read_csv(dataset_path / self.metadata_file)
+            len_before_filtering = len(frames_df)
+
         frames_df["row_id"] = frames_df.index
 
         # temp hack
@@ -245,8 +253,6 @@ class NvidiaDataset(Dataset):
 
         frames_df["turn_signal"].fillna(1, inplace=True)
         frames_df["turn_signal"] = frames_df["turn_signal"].astype(int)
-
-        len_before_filtering = len(frames_df)
 
         if self.output_modality == "waypoints":
             frames_df = frames_df[frames_df[f"position_x"].notna()]
