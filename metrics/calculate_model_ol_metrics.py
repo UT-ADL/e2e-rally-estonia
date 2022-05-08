@@ -71,35 +71,35 @@ def load_model(model_name, n_input_channels=3):
 
 class OusterSpringDataset(OusterDataset):
     def __init__(self, root_path, channel=None):
-        valid_paths = [
+        data_paths = [
             root_path / "2022-05-04-10-54-24_e2e_elva_seasonal_val_set_forw",
             root_path / "2022-05-04-11-01-40_e2e_elva_seasonal_val_set_back"
         ]
 
         tr = transforms.Compose([OusterCrop(xmin=516, ymin=46), OusterNormalize()])
-        super().__init__(valid_paths, tr, channel=channel)
+        super().__init__(data_paths, tr, channel=channel)
 
 
 class NvidiaSpringDataset(NvidiaDataset):
     def __init__(self, root_path):
-        valid_paths = [
+        data_paths = [
             root_path / "2022-05-04-10-54-24_e2e_elva_seasonal_val_set_forw",
             root_path / "2022-05-04-11-01-40_e2e_elva_seasonal_val_set_back"
         ]
 
         tr = transforms.Compose([NvidiaCropWide(), Normalize()])
-        super().__init__(valid_paths, tr, metadata_file="nvidia_frames.csv", color_space="rgb")
+        super().__init__(data_paths, tr, metadata_file="nvidia_frames.csv", color_space="rgb")
 
 
 class NvidiaAutumnDataset(NvidiaDataset):
     def __init__(self, root_path):
-        valid_paths = [
+        data_paths = [
             {'path': root_path / "2021-10-26-10-49-06_e2e_rec_ss20_elva", 'start': 9240, 'end': 23125},
             {'path': root_path / "2021-10-26-11-08-59_e2e_rec_ss20_elva_back", 'start': 9520, 'end': 23700}
         ]
 
         tr = transforms.Compose([NvidiaCropWide(), Normalize()])
-        super().__init__(valid_paths, tr, metadata_file="nvidia_frames.csv", color_space="bgr")
+        super().__init__(data_paths, tr, metadata_file="nvidia_frames.csv", color_space="bgr")
 
 
 if __name__ == "__main__":
