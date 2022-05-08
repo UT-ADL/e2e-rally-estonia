@@ -1,5 +1,6 @@
 import sys
 
+import cv2
 import numpy as np
 import pandas as pd
 import torch
@@ -134,15 +135,15 @@ class Normalize(object):
         data["image"] = image
         return data
 
-
 class NvidiaDataset(Dataset):
     #CAP_WAYPOINTS = 30
 
     def __init__(self, dataset_paths, transform=None, camera="front_wide", name="Nvidia dataset",
                  filter_turns=False, output_modality="steering_angle", n_branches=1, n_waypoints=6,
-                 metadata_file="nvidia_frames_ext.csv"):
+                 metadata_file="nvidia_frames_ext.csv", color_space="rgb"):
         self.name = name
         self.metadata_file = metadata_file
+        self.color_space = color_space
         self.dataset_paths = dataset_paths
         if transform:
             self.transform = transform
@@ -171,7 +172,15 @@ class NvidiaDataset(Dataset):
 
     def __getitem__(self, idx):
         frame = self.frames.iloc[idx]
-        image = torchvision.io.read_image(frame["image_path"])
+        if self.color_space == "rgb":
+            image = torchvision.io.read_image(frame["image_path"])
+        elif self.color_space == "bgr":
+            print("bgr")
+            image = cv2.imread(frame["image_path"])
+            image = torch.tensor(image, dtype=torch.uint8).permute(2, 0, 1)
+        else:
+            print(f"Unknown color space: ", self.color_space)
+            sys.exit()
 
         data = {
             'image': image,
