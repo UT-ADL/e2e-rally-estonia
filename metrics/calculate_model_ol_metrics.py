@@ -42,6 +42,10 @@ def main():
     results["lidar-in-train-spring"] = calculate_metrics(load_model("lidar-with-test-track"), ouster_spring_ds,
                                                          fps=10)
 
+    intensity_spring_ds = OusterSpringDataset(root_path, channel="intensity")
+    results["lidar-intensity-spring"] = calculate_metrics(load_model("lidar-intensity", n_input_channels=1),
+                                                          intensity_spring_ds, fps=10)
+
     print(results)
 
 
@@ -66,14 +70,14 @@ def load_model(model_name, n_input_channels=3):
 
 
 class OusterSpringDataset(OusterDataset):
-    def __init__(self, root_path):
+    def __init__(self, root_path, channel=None):
         valid_paths = [
             root_path / "2022-05-04-10-54-24_e2e_elva_seasonal_val_set_forw",
             root_path / "2022-05-04-11-01-40_e2e_elva_seasonal_val_set_back"
         ]
 
         tr = transforms.Compose([OusterCrop(xmin=516, ymin=46), OusterNormalize()])
-        super().__init__(valid_paths, tr)
+        super().__init__(valid_paths, tr, channel=channel)
 
 
 class NvidiaSpringDataset(NvidiaDataset):
