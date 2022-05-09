@@ -62,7 +62,9 @@ class OusterDataset(Dataset):
         data = {
             'image': image,
             'steering_angle': np.array(frame["steering_angle"]),
-            'vehicle_speed': np.array(frame["vehicle_speed"])
+            'vehicle_speed': np.array(frame["vehicle_speed"]),
+            'turn_signal': np.array(frame["turn_signal"]),
+            'row_id': np.array(frame["row_id"])
         }
 
         if self.transform:
@@ -74,7 +76,16 @@ class OusterDataset(Dataset):
         return len(self.frames.index)
 
     def read_dataset(self, dataset_path):
-        frames_df = pd.read_csv(dataset_path / "lidar_frames.csv")
+        if type(dataset_path) is dict:
+            frames_df = pd.read_csv(dataset_path['path'] / "lidar_frames.csv")
+            len_before_filtering = len(frames_df)
+            frames_df = frames_df.iloc[dataset_path['start']:dataset_path['end']]
+            dataset_path = dataset_path['path']
+        else:
+            frames_df = pd.read_csv(dataset_path / "lidar_frames.csv")
+            len_before_filtering = len(frames_df)
+
+        frames_df["row_id"] = frames_df.index
 
         # temp hack
         if "autonomous" not in frames_df.columns:
@@ -91,7 +102,8 @@ class OusterDataset(Dataset):
         camera_images = frames_df["lidar_filename"].to_numpy()
         frames_df["image_path"] = [str(dataset_path / image_path) for image_path in camera_images]
 
-        print(f"{dataset_path}: {len(frames_df)}")
+        len_after_filtering = len(frames_df)
+        print(f"{dataset_path}: {len(frames_df)}, filtered={len_before_filtering-len_after_filtering}")
         return frames_df
 
 

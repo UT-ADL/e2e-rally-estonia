@@ -340,10 +340,14 @@ def draw_steering_angle_overlay(example, frame, model, resized):
     steering_angle = math.degrees(frame["steering_angle"])
     vehicle_speed = frame["vehicle_speed"]
     turn_signal = int(frame["turn_signal"])
+    frame_id = frame["row_id"]
+
     cv2.putText(resized, 'True: {:.2f} deg, {:.2f} km/h'.format(steering_angle, vehicle_speed), (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     pred = model(example.unsqueeze(0)).squeeze(1).cpu().detach().numpy()[0]
-    if len(pred) == 1:  # steering angle
+    if type(pred) is np.float32:
+        pred_steering_angle = math.degrees(pred)
+    elif len(pred) == 1:  # steering angle
         pred_steering_angle = math.degrees(pred[0])
     elif len(pred) == 3:  # steering angle, conditional
         pred_steering_angle = math.degrees(pred[turn_signal])
@@ -360,6 +364,9 @@ def draw_steering_angle_overlay(example, frame, model, resized):
     }
     cv2.putText(resized, 'turn signal: {}'.format(turn_signal_map.get(turn_signal, "unknown")), (10, 110),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+    cv2.putText(resized, 'frame: {}'.format(frame_id), (10, 150),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, GREEN, 2, cv2.LINE_AA)
+
     draw_steering_wheel(resized, pred_steering_angle, steering_angle)
 
 
