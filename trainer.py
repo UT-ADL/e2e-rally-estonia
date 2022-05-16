@@ -69,11 +69,17 @@ class Trainer:
             if self.target_name == "steering_angle":
                 whiteness = metrics['whiteness']
                 mae = metrics['mae']
+                left_mae = metrics['left_mae']
+                straight_mae = metrics['straight_mae']
+                right_mae = metrics['right_mae']
                 progress_bar.set_description(f'{best_loss_marker}epoch {epoch + 1}'
                                              f' | train loss: {train_loss:.4f}'
                                              f' | valid loss: {valid_loss:.4f}'
                                              f' | whiteness: {whiteness:.4f}'
-                                             f' | mae: {mae:.4f}')
+                                             f' | mae: {mae:.4f}'
+                                             f' | l_mae: {left_mae:.4f}'
+                                             f' | s_mae: {straight_mae:.4f}'
+                                             f' | r_mae: {right_mae:.4f}')
             elif self.target_name == "waypoints":
                 first_wp_mae = metrics['first_wp_mae']
                 first_wp_whiteness = metrics['first_wp_whiteness']
@@ -109,6 +115,18 @@ class Trainer:
         if self.target_name == "steering_angle":
             true_steering_angles = frames_df.steering_angle.to_numpy()
             metrics = calculate_open_loop_metrics(predictions, true_steering_angles, fps=fps)
+
+            left_turns = frames_df["turn_signal"] == 0  # TODO: remove magic values
+            left_metrics = calculate_open_loop_metrics(predictions[left_turns], true_steering_angles[left_turns], fps=fps)
+            metrics["left_mae"] = left_metrics["mae"]
+
+            straight = frames_df["turn_signal"] == 1
+            straight_metrics = calculate_open_loop_metrics(predictions[straight], true_steering_angles[straight], fps=fps)
+            metrics["straight_mae"] = straight_metrics["mae"]
+
+            right_turns = frames_df["turn_signal"] == 2
+            right_metrics = calculate_open_loop_metrics(predictions[right_turns], true_steering_angles[right_turns], fps=fps)
+            metrics["right_mae"] = right_metrics["mae"]
 
         elif self.target_name == "waypoints":
 
@@ -258,7 +276,7 @@ class ControlTrainer(Trainer):
     def create_onxx_input(self, data):
         image_input = data[0]['image'].to(self.device)
         turn_signal = data[0]['turn_signal']
-        control = F.one_hot(turn_signal, 3).to(self.device)
+        control = F.one_hot(turn_signal, 3).to(torch.float32).to(self.device)
         return image_input, control
 
 
