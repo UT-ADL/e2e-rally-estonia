@@ -27,7 +27,7 @@ Environment can set up using conda by following commands:
 
 ```bash
 # Set up Pytorch environment
-conda create -n e2e pytorch torchvision cudatoolkit=11.1 jupyter pandas matplotlib tqdm scikit-learn scikit-image onnx -c pytorch -c nvidia
+conda create -n e2e pytorch torchvision cudatoolkit=11.1 jupyter pandas matplotlib tqdm scikit-learn scikit-image onnx seaborn -c pytorch -c nvidia
 conda activate e2e
 
 # Install TensorRT and pycuda
