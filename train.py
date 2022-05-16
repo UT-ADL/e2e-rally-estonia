@@ -59,13 +59,13 @@ def parse_arguments():
     argparser.add_argument(
         '--num-waypoints',
         type=int,
-        default=6,
+        default=10,
         help="Number of waypoints used for trajectory."
     )
 
     argparser.add_argument(
         '--dataset-folder',
-        default="/home/romet/data2/datasets/rally-estonia/dataset-small",
+        default="/home/romet/data2/datasets/rally-estonia/dataset-new-small/summer2021",
         help='Root path to the dataset.'
     )
 
@@ -178,6 +178,7 @@ def parse_arguments():
 
     return argparser.parse_args()
 
+
 class WeighedL1Loss(L1Loss):
     def __init__(self, weights):
         super().__init__(reduction='none')
@@ -187,6 +188,7 @@ class WeighedL1Loss(L1Loss):
         loss = super().forward(input, target)
         return (loss * self.weights).mean()
 
+
 class WeighedMSELoss(MSELoss):
     def __init__(self, weights):
         super().__init__(reduction='none')
@@ -195,6 +197,7 @@ class WeighedMSELoss(MSELoss):
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
         loss = super().forward(input, target)
         return (loss * self.weights).mean()
+
 
 class TrainingConfig:
     def __init__(self, args):
@@ -294,6 +297,7 @@ def train_model(model_name, train_conf, augment_conf):
 
     trainer.train(model, train_loader, valid_loader, optimizer, criterion,
                   train_conf.max_epochs, train_conf.patience, train_conf.fps)
+
 
 def load_model(model_name, n_input_channels=3, n_outputs=1, n_branches=1):
     model = PilotNetConditional(n_input_channels=n_input_channels, n_outputs=n_outputs, n_branches=n_branches)
