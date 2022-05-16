@@ -17,7 +17,7 @@ Before training a model, dataset needs to be downloaded and prepared . See [_dat
 
 ![camera_crop](./media/summer_lidar_crop.jpg "Summer lidar crop")
 
-###Following output modalities are supported:
+### Following output modalities are supported:
 - Steering angle
 - Trajectory waypoints (longitudinal part fixed)
 
