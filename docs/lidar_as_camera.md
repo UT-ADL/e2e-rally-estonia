@@ -1,7 +1,7 @@
 # LiDAR-as-Camera for End-to-End Driving
 
 This repository contains the code to reproduce the experiments of the paper "LiDAR-as-Camera for End-to-End Driving".
-All used models can be trained and off-policy metrics reproduced. 
+All used models can be trained and off-policy metrics reproduced. Rosbag recordings are provided to reproduce on-policy metrics.
 
 Task list:
 - [ ] training models
