@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms.functional as F
 from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
-from skimage import io, img_as_ubyte
+from skimage import io
 from torch.nn.functional import one_hot
 from tqdm import tqdm
 
@@ -23,6 +23,7 @@ from trajectory import calculate_steering_angle
 
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
+
 
 def parse_arguments():
     argparser = argparse.ArgumentParser()
@@ -235,6 +236,7 @@ def draw_trajectory(frame, waypoints, color):
         wp = (5 * x_img, 5 * y_img)
         cv2.circle(frame, wp, 2, color, 2)
 
+
 def getImageWithOverlay(model, frame, output_modality, model_type):
     image = frame["image"].to(device)
     img = image.cpu().permute(1, 2, 0).detach().numpy()
@@ -262,7 +264,7 @@ def getImageWithOverlay(model, frame, output_modality, model_type):
     resized = cv2.resize(result, dim, interpolation=cv2.INTER_AREA)
 
     if output_modality == "steering_angle":
-        draw_steering_angle_overlay(image, frame, model, resized)
+        draw_steering_angle_overlay(control, frame, image, model, model_type, resized)
     elif output_modality == "waypoints":
         draw_waypoints_overlay(control, frame, image, model, model_type, resized)
     else:
@@ -315,7 +317,7 @@ def draw_waypoints_overlay(control, frame, image, model, model_type, resized):
     steering_angle_wp = [0.0, 0.0]
     steering_angle_wp.extend(predicted_trajectory[:10])
     #steering_angle_wp.extend(true_waypoints[:10])
-    pred_steering_angle = math.degrees(calculate_steering_angle(steering_angle_wp, ref_distance=8))
+    pred_steering_angle = math.degrees(calculate_steering_angle(steering_angle_wp, ref_distance=6.857))
     #pred_steering_angle = math.degrees(np.arctan(true_waypoints[3] / true_waypoints[2])) * 14.7
     cv2.putText(resized, 'Pred: {:.4f} deg'.format(pred_steering_angle), (10, 70),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, RED, 2, cv2.LINE_AA)
@@ -336,7 +338,7 @@ def draw_waypoints_overlay(control, frame, image, model, model_type, resized):
     # draw_trajectory(resized, left_waypoints, (255, 255, 0))
 
 
-def draw_steering_angle_overlay(example, frame, model, resized):
+def draw_steering_angle_overlay(control, frame, image, model, model_type, resized):
     steering_angle = math.degrees(frame["steering_angle"])
     vehicle_speed = frame["vehicle_speed"]
     turn_signal = int(frame["turn_signal"])
@@ -344,7 +346,10 @@ def draw_steering_angle_overlay(example, frame, model, resized):
 
     cv2.putText(resized, 'True: {:.2f} deg, {:.2f} km/h'.format(steering_angle, vehicle_speed), (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    pred = model(example.unsqueeze(0)).squeeze(1).cpu().detach().numpy()[0]
+    if model_type == "pilotnet-control":
+        pred = model(image.unsqueeze(0), control).squeeze(1).cpu().detach().numpy()[0]
+    else:
+        pred = model(image.unsqueeze(0)).squeeze(1).cpu().detach().numpy()[0]
     if type(pred) is np.float32:
         pred_steering_angle = math.degrees(pred)
     elif len(pred) == 1:  # steering angle
@@ -406,7 +411,8 @@ if __name__ == "__main__":
     root_path = Path("/home/romet/data2/datasets/rally-estonia/dataset-new-small/summer2021")
     data_paths = [root_path / args.dataset_name]
     if args.input_modality == "nvidia-camera":
-        dataset = NvidiaDataset(data_paths, output_modality=args.output_modality, n_waypoints=10)
+        dataset = NvidiaDataset(data_paths, output_modality=args.output_modality, n_waypoints=10,
+                                metadata_file="nvidia_frames_ext.csv")
     elif args.input_modality == "ouster-lidar":
         dataset = OusterDataset(data_paths)
     else:
