@@ -1,23 +1,28 @@
-# End-to-End Driving
+# Rally Estonia End-to-End Driving
 
-This repository contains code to train end-to-end model using Rally Estonia dataset. 
+This repository contains framework to train end-to-end driving models using Rally Estonia dataset. Following papers can
+be (partially) reproduced using the framework:
+ - [LiDAR-as-Camera for End-to-End Driving](./docs/lidar_as_camera.md) ([paper](http://todo))
 
-Following input modalities are supported:
+## Dataset
+
+To get access to the dataset, please fill out [this form](https://forms.gle/nDkwcpzgBoYeJBE39).
+
+Before training a model, dataset needs to be downloaded and prepared . See [_dataloading_](./dataloading/README.md) manual for this. 
+
+### Following input modalities are supported:
 - Nvidia RGB cameras (only front wide camera used currently)
 - Ouster LiDAR range, ambient, intensity image
 ![camera_crop](./media/camera-crops.png "Camera crop")
 
 ![camera_crop](./media/summer_lidar_crop.jpg "Summer lidar crop")
 
-Following output modalities are supported:
+###Following output modalities are supported:
 - Steering angle
 - Trajectory waypoints (longitudinal part fixed)
 
 Only lateral control (steering) is predicted, longitudinal control (throttle) is not predicted and must be controlled using other means.
 
-## Dataset
-
-Before training a model, dataset needs to be downloaded and prepared . See [_dataloading_](./dataloading/README.md) manual for this. 
 
 ## Training
 
