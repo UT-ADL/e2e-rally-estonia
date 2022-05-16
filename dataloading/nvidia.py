@@ -254,6 +254,9 @@ class NvidiaDataset(Dataset):
         frames_df["turn_signal"].fillna(1, inplace=True)
         frames_df["turn_signal"] = frames_df["turn_signal"].astype(int)
 
+        # Removed frames marked as skipped
+        frames_df = frames_df[frames_df["turn_signal"] != -1]  # TODO: remove magic values.
+
         if self.output_modality == "waypoints":
             frames_df = frames_df[frames_df[f"position_x"].notna()]
             frames_df = frames_df[frames_df[f"position_x"].notna()]
@@ -305,6 +308,7 @@ class NvidiaDataset(Dataset):
         frames_df["image_path"] = [str(dataset_path / image_path) for image_path in camera_images]
 
         print(f"{dataset_path}: lenght={len(frames_df)}, filtered={len_before_filtering-len_after_filtering}")
+        frames_df.reset_index(inplace=True)
         return frames_df
 
     def steering_angles_degrees(self):

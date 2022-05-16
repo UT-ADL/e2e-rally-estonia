@@ -10,6 +10,7 @@ from tqdm import tqdm
 LEFT = 2
 STRAIGHT = 1
 RIGHT = 0
+SKIP = -1
 
 def parse_arguments():
     argparser = argparse.ArgumentParser()
@@ -204,6 +205,7 @@ def fix_frames(root_path):
     dataset_path = root_path / "2021-06-09-14-58-11_e2e_rec_ss3"
     frames_df = pd.read_csv(dataset_path / "nvidia_frames_ext.csv", index_col='index')
     frames_df.loc[frames_df.iloc[8635:8880].index, 'turn_signal'] = LEFT
+    frames_df.loc[frames_df.iloc[3775:4475].index, 'turn_signal'] = SKIP
     frames_df.to_csv(dataset_path / "nvidia_frames_ext.csv", header=True)
 
     dataset_path = root_path / "2021-06-09-16-24-59_e2e_rec_ss13"
@@ -212,6 +214,7 @@ def fix_frames(root_path):
     frames_df.loc[frames_df.iloc[12459:12715].index, 'turn_signal'] = RIGHT
     frames_df.loc[frames_df.iloc[17275:17518].index, 'turn_signal'] = RIGHT
     frames_df.loc[frames_df.iloc[25335:25525].index, 'turn_signal'] = LEFT
+    frames_df.loc[frames_df.iloc[14650:15190].index, 'turn_signal'] = SKIP
     frames_df.to_csv(dataset_path / "nvidia_frames_ext.csv", header=True)
 
     dataset_path = root_path / "2021-06-10-13-19-22_e2e_ss4_backwards"
