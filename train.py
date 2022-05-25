@@ -14,8 +14,9 @@ from torch.utils.data import ConcatDataset, WeightedRandomSampler
 from dataloading.nvidia import NvidiaTrainDataset, NvidiaValidationDataset, NvidiaWinterTrainDataset, \
     NvidiaWinterValidationDataset, AugmentationConfig
 from dataloading.ouster import OusterTrainDataset, OusterValidationDataset
+from efficient_net import effnetv2_s
 from pilotnet import PilotNetConditional, PilotnetControl
-from trainer import ControlTrainer, ConditionalTrainer
+from trainer import ControlTrainer, ConditionalTrainer, PilotNetTrainer
 
 
 def parse_arguments():
@@ -30,7 +31,7 @@ def parse_arguments():
     argparser.add_argument(
         '--model-type',
         required=True,
-        choices=['pilotnet', 'pilotnet-conditional', 'pilotnet-control'],
+        choices=['pilotnet', 'pilotnet-conditional', 'pilotnet-control', 'efficientnet'],
         help='Defines which model will be trained.'
     )
 
@@ -251,6 +252,9 @@ def train_model(model_name, train_conf, augment_conf):
         model = PilotNetConditional(train_conf.n_input_channels, train_conf.n_outputs, train_conf.n_branches)
         trainer = ConditionalTrainer(model_name, train_conf.output_modality, train_conf.n_branches,
                                      train_conf.wandb_project)
+    elif train_conf.model_type == "efficientnet":
+        model = effnetv2_s()
+        trainer = PilotNetTrainer(model_name, target_name="steering_angle")
     else:
         model = PilotNetConditional(train_conf.n_input_channels, train_conf.n_outputs, train_conf.n_branches)
         trainer = ConditionalTrainer(model_name, train_conf.output_modality, train_conf.n_branches,
