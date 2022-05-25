@@ -58,7 +58,8 @@ class ViTForRegression(ViTPreTrainedModel):
             attentions=outputs.attentions,
         )
 
-class ViTTrainer():
+
+class ViTTrainer:
 
     def __init__(self, pretrained_model_name, save_model_name, wandb_logging=False):
         self.save_model_name = save_model_name
@@ -114,7 +115,6 @@ class ViTTrainer():
             if epochs_of_no_improve == patience:
                 print(f'Early stopping, on epoch: {epoch + 1}.')
                 break
-
 
     def evaluate(self, iterator):
         epoch_loss = 0.0
