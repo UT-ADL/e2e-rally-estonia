@@ -2,7 +2,7 @@
 
 This repository contains framework to train end-to-end driving models using Rally Estonia dataset. Following papers can
 be reproduced using the framework:
- - [LiDAR-as-Camera for End-to-End Driving](./docs/lidar_as_camera.md) ([paper](http://todo))
+ - [LiDAR-as-Camera for End-to-End Driving](./docs/lidar_as_camera.md) ([paper](https://drive.google.com/file/d/1S-YzcJccHsM0LTmpnaC91I5yWi1FQqPk/view))
 
 ## Dataset
 
