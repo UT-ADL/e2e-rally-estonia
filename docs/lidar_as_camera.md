@@ -10,12 +10,14 @@ To get access to the dataset, please fill out [this form](https://forms.gle/nDkw
 
 ## Models
 
-[Pretrained models](../models/lidar-camera-paper) are included with the code. All training runs were also logged using 
+[Pretrained models](../models/lidar-camera-paper) are included with the code. All training runs were also logged and can be seen in 
 [Weight & Biases](https://wandb.ai/rometaidla/lanefollowing-ut-camera-vs-lidar?workspace=user-). 
 
-Models can be retrained by following these instructions:
+Models can be retrained by following these instructions.
 
 ### Camera models
+
+To train model using Camera input:
 
 ```bash
 python train.py --model-name camera-v1 --input-modality nvidia-camera --output-modality steering_angle  --model-type pilotnet --patience 10 --max-epochs 100
