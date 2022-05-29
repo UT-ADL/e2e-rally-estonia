@@ -50,6 +50,14 @@ def parse_arguments():
     )
 
     argparser.add_argument(
+        '--camera-name',
+        required=False,
+        default="front_wide",
+        choices=['front_wide', 'left', 'right', 'all'],
+        help="Camera to use for training. Only applies to 'nvidia-camera' modality."
+    )
+
+    argparser.add_argument(
         '--output-modality',
         required=False,
         default="steering_angle",
@@ -130,7 +138,7 @@ def parse_arguments():
         '--num-workers',
         type=int,
         default=16,
-        help='Weight decay used in training.'
+        help='Number of workers used for data loading.'
     )
 
     argparser.add_argument(
@@ -206,6 +214,7 @@ class TrainingConfig:
         self.dataset_folder = args.dataset_folder
         self.input_modality = args.input_modality
         self.lidar_channel = args.lidar_channel
+        self.camera_name = args.camera_name
         self.output_modality = args.output_modality
         self.n_waypoints = args.num_waypoints
         self.learning_rate = args.learning_rate
@@ -236,8 +245,8 @@ class TrainingConfig:
 def train_model(model_name, train_conf, augment_conf):
 
     print(f"Training model {model_name}, wandb_project={train_conf.wandb_project}")
-
-    wandb.init(project=train_conf.wandb_project)
+    if train_conf.wandb_project:
+        wandb.init(project=train_conf.wandb_project)
     print('train_conf: ', train_conf.__dict__)
     print('augment_conf: ', augment_conf.__dict__)
 
@@ -313,14 +322,16 @@ def load_model(model_name, n_input_channels=3, n_outputs=1, n_branches=1):
 
 def load_data(train_conf, augment_conf):
     print(f"Reading {train_conf.input_modality} data from {train_conf.dataset_folder}, "
-          f"lidar_channel={train_conf.lidar_channel}, output_modality={train_conf.output_modality}")
+          f"camera name={train_conf.camera_name}, lidar_channel={train_conf.lidar_channel}, "
+          f"output_modality={train_conf.output_modality}")
 
     dataset_path = Path(train_conf.dataset_folder)
     if train_conf.input_modality == "nvidia-camera":
         trainset = NvidiaTrainDataset(dataset_path, train_conf.output_modality,
-                                      train_conf.n_branches, n_waypoints=train_conf.n_waypoints)
-        validset = NvidiaValidationDataset(dataset_path, train_conf.output_modality
-                                           , train_conf.n_branches, n_waypoints=train_conf.n_waypoints)
+                                      train_conf.n_branches, n_waypoints=train_conf.n_waypoints,
+                                      camera=train_conf.camera_name)
+        validset = NvidiaValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches,
+                                           n_waypoints=train_conf.n_waypoints)
     elif train_conf.input_modality == "nvidia-camera-winter":
         trainset = NvidiaWinterTrainDataset(dataset_path, train_conf.output_modality,
                                             train_conf.n_branches, n_waypoints=train_conf.n_waypoints,

@@ -127,6 +127,7 @@ class AugmentImage:
 
         return data
 
+
 class Normalize(object):
     def __call__(self, data, transform=None):
         # normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
@@ -135,6 +136,7 @@ class Normalize(object):
         # data["image"] = normalize(image)
         data["image"] = image
         return data
+
 
 class NvidiaDataset(Dataset):
     #CAP_WAYPOINTS = 30
@@ -164,7 +166,13 @@ class NvidiaDataset(Dataset):
 
         self.n_branches = n_branches
 
-        datasets = [self.read_dataset(dataset_path, camera) for dataset_path in dataset_paths]
+        if camera == 'all':
+            datasets = [self.read_dataset(dataset_path, "left") for dataset_path in dataset_paths] + \
+                       [self.read_dataset(dataset_path, "right") for dataset_path in dataset_paths] + \
+                       [self.read_dataset(dataset_path, "front_wide") for dataset_path in dataset_paths]
+
+        else:
+            datasets = [self.read_dataset(dataset_path, camera) for dataset_path in dataset_paths]
         self.frames = pd.concat(datasets)
 
         if filter_turns:
@@ -198,13 +206,9 @@ class NvidiaDataset(Dataset):
 
         if self.output_modality == "waypoints":
             waypoints = []
-            #for i in range(self.N_WAYPOINTS):
-            #for i in np.arange(2, self.N_WAYPOINTS * 2 + 2, 2):
             for i in np.arange(1, self.n_waypoints + 1):
-                # waypoints.append(frame[f"x_{i + 1}_offset"])
-                # waypoints.append(frame[f"y_{i + 1}_offset"])
-                waypoints.append(frame[f"wp_x_offset_{i}"])
-                waypoints.append(frame[f"wp_y_offset_{i}"])
+                waypoints.append(frame[f"wp{i}_{self.camera_name}_x"])
+                waypoints.append(frame[f"wp{i}_{self.camera_name}_y"])
 
             data['waypoints'] = np.array(waypoints)
             target_values = waypoints
@@ -229,6 +233,12 @@ class NvidiaDataset(Dataset):
 
     def __len__(self):
         return len(self.frames.index)
+
+    def get_waypoints(self):
+        wp_x_cols = [f"wp{i}_{self.camera_name}_x" for i in np.arange(1, self.n_waypoints + 1)]
+        wp_y_cols = [f"wp{i}_{self.camera_name}_y" for i in np.arange(1, self.n_waypoints + 1)]
+        waypoint_cols = np.column_stack((wp_x_cols, wp_y_cols)).reshape(-1)
+        return self.frames[waypoint_cols].to_numpy()
 
     def read_dataset(self, dataset_path, camera):
         if type(dataset_path) is dict:
@@ -259,12 +269,11 @@ class NvidiaDataset(Dataset):
 
         if self.output_modality == "waypoints":
             frames_df = frames_df[frames_df[f"position_x"].notna()]
-            frames_df = frames_df[frames_df[f"position_x"].notna()]
+            frames_df = frames_df[frames_df[f"position_y"].notna()]
 
-            #for i in np.arange(2, self.N_WAYPOINTS * 2 + 2, 2):
             for i in np.arange(1, self.n_waypoints + 1):
-                frames_df = frames_df[frames_df[f"wp_x_offset_{i}"].notna()]
-                frames_df = frames_df[frames_df[f"wp_y_offset_{i}"].notna()]
+                frames_df = frames_df[frames_df[f"wp{i}_{camera}_x"].notna()]
+                frames_df = frames_df[frames_df[f"wp{i}_{camera}_y"].notna()]
 
             frames_df["yaw_delta"] = np.abs(frames_df["yaw"]) - np.abs(frames_df["yaw"]).shift(-1)
             frames_df = frames_df[np.abs(frames_df["yaw_delta"]) < 0.1]
@@ -306,6 +315,10 @@ class NvidiaDataset(Dataset):
 
         camera_images = frames_df[f"{camera}_filename"].to_numpy()
         frames_df["image_path"] = [str(dataset_path / image_path) for image_path in camera_images]
+        if self.output_modality == "waypoints":
+            for i in np.arange(1, self.n_waypoints + 1):
+                frames_df[f"wp{i}_all_x"] = frames_df[f"wp{i}_{camera}_x"]
+                frames_df[f"wp{i}_all_y"] = frames_df[f"wp{i}_{camera}_y"]
 
         print(f"{dataset_path}: lenght={len(frames_df)}, filtered={len_before_filtering-len_after_filtering}")
         frames_df.reset_index(inplace=True)
@@ -316,7 +329,8 @@ class NvidiaDataset(Dataset):
 
 
 class NvidiaTrainDataset(NvidiaDataset):
-    def __init__(self, root_path, output_modality="steering_angle", n_branches=3, n_waypoints=6):
+    def __init__(self, root_path, output_modality="steering_angle", n_branches=3, n_waypoints=6,
+                 camera="front_wide"):
         train_paths = [
             root_path / "2021-05-20-12-36-10_e2e_sulaoja_20_30",
             root_path / "2021-05-20-12-43-17_e2e_sulaoja_20_30",
@@ -369,12 +383,13 @@ class NvidiaTrainDataset(NvidiaDataset):
             ]
 
         tr = transforms.Compose([Normalize()])
-        super().__init__(train_paths, tr, output_modality=output_modality, n_branches=n_branches,  n_waypoints=n_waypoints)
+        super().__init__(train_paths, tr, camera=camera,  output_modality=output_modality, n_branches=n_branches,
+                         n_waypoints=n_waypoints)
 
 
 class NvidiaValidationDataset(NvidiaDataset):
     # todo: remove default parameters
-    def __init__(self, root_path, output_modality="steering_angle", n_branches=3, n_waypoints=6):
+    def __init__(self, root_path, output_modality="steering_angle", n_branches=3, n_waypoints=6, camera="front_wide"):
         valid_paths = [
             root_path / "2021-05-28-15-19-48_e2e_sulaoja_20_30",
             root_path / "2021-06-07-14-20-07_e2e_rec_ss6",
@@ -390,7 +405,8 @@ class NvidiaValidationDataset(NvidiaDataset):
         ]
 
         tr = transforms.Compose([Normalize()])
-        super().__init__(valid_paths, tr, output_modality=output_modality, n_branches=n_branches, n_waypoints=n_waypoints)
+        super().__init__(valid_paths, tr, camera=camera, output_modality=output_modality, n_branches=n_branches,
+                         n_waypoints=n_waypoints)
 
 
 class NvidiaWinterTrainDataset(NvidiaDataset):

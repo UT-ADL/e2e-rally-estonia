@@ -1,0 +1,90 @@
+<robot name="vehicle_platform">
+  <!-- Frames -->
+  <link name="base_link" />
+  <link name="lidar_center/os_sensor" />
+  <link name="lidar_front" />
+  <link name="radar_fc" />
+  <link name="imu" />
+  <link name="lidar" />
+  <link name="camera_fr" />
+  <link name="camera_fl" />
+  <link name="interfacea_link0" />
+  <link name="interfacea_link1" />
+  <link name="interfacea_link2" />
+  <link name="interfacea_link3" />
+
+  <!-- Sensor Transforms -->
+
+  <!-- Lidar_center -->
+  <joint name="lidar_center/os_sensor" type="fixed" >
+    <parent link="base_link" />
+    <child link="lidar_center/os_sensor" />
+    <origin xyz="1.02 0 1.78734" rpy="0 0 0.015" />
+  </joint>
+
+  <!-- Lidar -->
+  <joint name="lidar" type="fixed" >
+    <parent link="lidar_center/os_sensor" />
+    <child link="lidar" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <!-- Lidar Front -->
+  <joint name="lidar_front" type="fixed" >
+    <parent link="base_link" />
+    <child link="lidar_front" />
+    <origin xyz="1.92 -0.072 1.439" rpy="0.001 0.192 0.028" />
+  </joint>
+
+  <!-- Front Center Radar -->
+  <joint name="radar_fc" type="fixed" >
+    <parent link="base_link" />
+    <child link="radar_fc" />
+    <origin xyz="4 0 0.07" rpy="0 0 0" />
+  </joint>
+
+ <!-- Imu -->
+  <joint name="imu" type="fixed" >
+    <parent link="base_link" />
+    <child link="imu" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <!-- Mako Cameras -->
+  <joint name="camera_fr" type="fixed" >
+    <parent link="lidar" />
+    <child link="camera_fr" />
+    <origin xyz="1.0776 -0.26893 -0.65117" rpy="-1.40999 0.0939 -2.02844" />
+  </joint>
+  <joint name="camera_fl" type="fixed" >
+    <parent link="lidar" />
+    <child link="camera_fl" />
+    <origin xyz="1.11787 0.17502 -0.66163" rpy="-1.47631 -0.00633 -1.66711" />
+  </joint>
+
+  <!-- Nvidia Cameras -->
+  <joint name="interfacea_link0" type="fixed" >
+    <parent link="lidar" />
+    <child link="interfacea_link0" />
+    <origin xyz="0.777 0.556 -0.475" rpy="-1.594 0.032 -1.477" />
+  </joint>
+
+  <joint name="interfacea_link1" type="fixed" >
+    <parent link="lidar" />
+    <child link="interfacea_link1" />
+    <origin xyz="0.848 -0.580 -0.503" rpy="-1.564 0.039 -1.58" />
+  </joint>
+
+  <joint name="interfacea_link2" type="fixed" >
+    <parent link="lidar" />
+    <child link="interfacea_link2" />
+    <origin xyz="0.776 -0.111 -0.457" rpy="-1.584 0.036 -1.604" />
+  </joint>
+
+  <joint name="interfacea_link3" type="fixed" >
+    <parent link="lidar" />
+    <child link="interfacea_link3" />
+    <origin xyz="0.858 0.181 -0.486" rpy="-1.572 0.017 -1.613" />
+  </joint>
+
+</robot>

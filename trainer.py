@@ -129,13 +129,7 @@ class Trainer:
             metrics["right_mae"] = right_metrics["mae"]
 
         elif self.target_name == "waypoints":
-
-            # TODO: refactor to dataset class?
-            wp_x_cols = [col for col in frames_df.columns if col.startswith('wp_x')]
-            wp_y_cols = [col for col in frames_df.columns if col.startswith('wp_y')]
-            waypoint_cols = np.column_stack((wp_x_cols, wp_y_cols)).reshape(-1)
-            true_waypoints = frames_df[waypoint_cols].to_numpy()
-
+            true_waypoints = valid_loader.dataset.get_waypoints()
             metrics = calculate_trajectory_open_loop_metrics(predictions, true_waypoints, fps=fps)
         else:
             print(f"Uknown target name {self.target_name}")
