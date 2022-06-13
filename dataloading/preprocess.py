@@ -10,7 +10,9 @@ from pytransform3d.urdf import UrdfTransformManager
 from pytransform3d import rotations as pr
 from pytransform3d import transformations as pt
 
+from dataloading.camera import Camera
 
+# TODO use enum
 LEFT = 2
 STRAIGHT = 1
 RIGHT = 0
@@ -42,7 +44,8 @@ def preprocess_dataset(dataset_folder, dataset_name):
     else:
         dataset_paths = get_dataset_paths(root_path)
         create_waypoints(dataset_paths)
-        fix_frames(root_path)
+
+    fix_frames(root_path)
 
 
 def get_dataset_paths(root_path):
@@ -151,17 +154,17 @@ def create_waypoints(dataset_paths):
             frames_df[f"wp{wp_i}_y"] = np.nan
             frames_df[f"wp{wp_i}_z"] = np.nan
 
-            frames_df[f"wp{wp_i}_center_x"] = np.nan
-            frames_df[f"wp{wp_i}_center_y"] = np.nan
-            frames_df[f"wp{wp_i}_center_z"] = np.nan
+            frames_df[f"wp{wp_i}_{Camera.FRONT_WIDE.value}_x"] = np.nan
+            frames_df[f"wp{wp_i}_{Camera.FRONT_WIDE.value}_y"] = np.nan
+            frames_df[f"wp{wp_i}_{Camera.FRONT_WIDE.value}_z"] = np.nan
 
-            frames_df[f"wp{wp_i}_left_x"] = np.nan
-            frames_df[f"wp{wp_i}_left_y"] = np.nan
-            frames_df[f"wp{wp_i}_left_z"] = np.nan
+            frames_df[f"wp{wp_i}_{Camera.LEFT.value}_x"] = np.nan
+            frames_df[f"wp{wp_i}_{Camera.LEFT.value}_y"] = np.nan
+            frames_df[f"wp{wp_i}_{Camera.LEFT.value}_z"] = np.nan
 
-            frames_df[f"wp{wp_i}_right_x"] = np.nan
-            frames_df[f"wp{wp_i}_right_y"] = np.nan
-            frames_df[f"wp{wp_i}_right_z"] = np.nan
+            frames_df[f"wp{wp_i}_{Camera.RIGHT.value}_x"] = np.nan
+            frames_df[f"wp{wp_i}_{Camera.RIGHT.value}_y"] = np.nan
+            frames_df[f"wp{wp_i}_{Camera.RIGHT.value}_z"] = np.nan
 
         tm = get_transform_manager()
 
@@ -193,21 +196,21 @@ def create_waypoints(dataset_paths):
                 center_cam_transform = tm.get_transform("base_link", "interfacea_link2")
                 wp_center_cam = pt.transform(center_cam_transform, wp_local)
                 # Camera frames are rotated compared to base_link frame (x = z, y = -x, z = -y)
-                frames_df.loc[index, f"wp{wp_i}_center_x"] = wp_center_cam[2]
-                frames_df.loc[index, f"wp{wp_i}_center_y"] = -wp_center_cam[0]
-                frames_df.loc[index, f"wp{wp_i}_center_z"] = -wp_center_cam[1]
+                frames_df.loc[index, f"wp{wp_i}_{Camera.FRONT_WIDE.value}_x"] = wp_center_cam[2]
+                frames_df.loc[index, f"wp{wp_i}_{Camera.FRONT_WIDE.value}_y"] = -wp_center_cam[0]
+                frames_df.loc[index, f"wp{wp_i}_{Camera.FRONT_WIDE.value}_z"] = -wp_center_cam[1]
 
                 left_cam_transform = tm.get_transform("base_link", "interfacea_link0")
                 wp_left_cam = pt.transform(left_cam_transform, wp_local)
-                frames_df.loc[index, f"wp{wp_i}_left_x"] = wp_left_cam[2]
-                frames_df.loc[index, f"wp{wp_i}_left_y"] = -wp_left_cam[0]
-                frames_df.loc[index, f"wp{wp_i}_left_z"] = -wp_left_cam[1]
+                frames_df.loc[index, f"wp{wp_i}_{Camera.LEFT.value}_x"] = wp_left_cam[2]
+                frames_df.loc[index, f"wp{wp_i}_{Camera.LEFT.value}_y"] = -wp_left_cam[0]
+                frames_df.loc[index, f"wp{wp_i}_{Camera.LEFT.value}_z"] = -wp_left_cam[1]
 
                 right_cam_transform = tm.get_transform("base_link", "interfacea_link1")
                 wp_right_cam = pt.transform(right_cam_transform, wp_local)
-                frames_df.loc[index, f"wp{wp_i}_right_x"] = wp_right_cam[2]
-                frames_df.loc[index, f"wp{wp_i}_right_y"] = -wp_right_cam[0]
-                frames_df.loc[index, f"wp{wp_i}_right_z"] = -wp_right_cam[1]
+                frames_df.loc[index, f"wp{wp_i}_{Camera.RIGHT.value}_x"] = wp_right_cam[2]
+                frames_df.loc[index, f"wp{wp_i}_{Camera.RIGHT.value}_y"] = -wp_right_cam[0]
+                frames_df.loc[index, f"wp{wp_i}_{Camera.RIGHT.value}_z"] = -wp_right_cam[1]
 
         frames_df.to_csv(dataset_path / "nvidia_frames_ext.csv", header=True)
 

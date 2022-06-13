@@ -13,6 +13,8 @@ import torchvision.transforms.functional as F
 
 from skimage.util import random_noise
 
+from dataloading.camera import Camera
+
 
 class NvidiaResizeAndCrop(object):
     def __call__(self, data):
@@ -143,7 +145,7 @@ class NvidiaDataset(Dataset):
 
     def __init__(self, dataset_paths, transform=None, camera="front_wide", name="Nvidia dataset",
                  filter_turns=False, output_modality="steering_angle", n_branches=1, n_waypoints=6,
-                 metadata_file="nvidia_frames_ext.csv", color_space="rgb"):
+                 metadata_file="nvidia_frames.csv", color_space="rgb", side_cameras_weight=0.33):
         self.name = name
         self.metadata_file = metadata_file
         self.color_space = color_space
@@ -155,6 +157,7 @@ class NvidiaDataset(Dataset):
         self.camera_name = camera
         self.output_modality = output_modality
         self.n_waypoints = n_waypoints
+        self.side_cameras_weight = side_cameras_weight
 
         if self.output_modality == "waypoints":
             self.target_size = 2 * self.n_waypoints
@@ -190,16 +193,24 @@ class NvidiaDataset(Dataset):
             print(f"Unknown color space: ", self.color_space)
             sys.exit()
 
+        # TODO replace if-else with map
+        if self.camera_name == Camera.LEFT.value:
+            steering_angle = np.array(frame["steering_angle_left"])
+        elif self.camera_name == Camera.RIGHT.value:
+            steering_angle = np.array(frame["steering_angle_right"])
+        else:
+            steering_angle = np.array(frame["steering_angle"])
+
         data = {
             'image': image,
-            'steering_angle': np.array(frame["steering_angle"]),
+            'steering_angle': steering_angle,
             'vehicle_speed': np.array(frame["vehicle_speed"]),
             'autonomous': np.array(frame["autonomous"]),
             'position_x': np.array(frame["position_x"]),
             'position_y': np.array(frame["position_y"]),
             'yaw': np.array(frame["yaw"]),
             'turn_signal': np.array(frame["turn_signal"]),
-            'row_id': np.array(frame["row_id"])
+            'row_id': np.array(frame["row_id"]),
         }
 
         turn_signal = int(frame["turn_signal"])
@@ -258,6 +269,9 @@ class NvidiaDataset(Dataset):
         # frames_df["autonomous"] = False
 
         frames_df = frames_df[frames_df['steering_angle'].notna()]  # TODO: one steering angle is NaN, why?
+        if camera != Camera.FRONT_WIDE.value:
+            frames_df = frames_df[frames_df['steering_angle_left'].notna()]
+            frames_df = frames_df[frames_df['steering_angle_right'].notna()]
         frames_df = frames_df[frames_df['vehicle_speed'].notna()]
         frames_df = frames_df[frames_df[f'{camera}_filename'].notna()]
 
@@ -275,8 +289,8 @@ class NvidiaDataset(Dataset):
                 frames_df = frames_df[frames_df[f"wp{i}_{camera}_x"].notna()]
                 frames_df = frames_df[frames_df[f"wp{i}_{camera}_y"].notna()]
 
-            frames_df["yaw_delta"] = np.abs(frames_df["yaw"]) - np.abs(frames_df["yaw"]).shift(-1)
-            frames_df = frames_df[np.abs(frames_df["yaw_delta"]) < 0.1]
+        frames_df["yaw_delta"] = np.abs(frames_df["yaw"]) - np.abs(frames_df["yaw"]).shift(-1)
+        frames_df = frames_df[np.abs(frames_df["yaw_delta"]) < 0.1]
 
 
         # if self.calculate_waypoints:
@@ -320,6 +334,8 @@ class NvidiaDataset(Dataset):
                 frames_df[f"wp{i}_all_x"] = frames_df[f"wp{i}_{camera}_x"]
                 frames_df[f"wp{i}_all_y"] = frames_df[f"wp{i}_{camera}_y"]
 
+        frames_df["camera_type"] = camera
+
         print(f"{dataset_path}: lenght={len(frames_df)}, filtered={len_before_filtering-len_after_filtering}")
         frames_df.reset_index(inplace=True)
         return frames_df
@@ -330,8 +346,8 @@ class NvidiaDataset(Dataset):
 
 class NvidiaTrainDataset(NvidiaDataset):
     def __init__(self, root_path, output_modality="steering_angle", n_branches=3, n_waypoints=6,
-                 camera="front_wide"):
-        train_paths = [
+                 camera="front_wide", augment_conf=AugmentationConfig(), metadata_file="nvidia_frames.csv"):
+        self.dataset_paths = [
             root_path / "2021-05-20-12-36-10_e2e_sulaoja_20_30",
             root_path / "2021-05-20-12-43-17_e2e_sulaoja_20_30",
             root_path / "2021-05-20-12-51-29_e2e_sulaoja_20_30",
@@ -340,10 +356,10 @@ class NvidiaTrainDataset(NvidiaDataset):
             root_path / "2021-05-20-13-59-00_e2e_sulaoja_10_10",
             root_path / "2021-05-28-15-07-56_e2e_sulaoja_20_30",
             root_path / "2021-05-28-15-17-19_e2e_sulaoja_20_30",
-            root_path / "2021-06-09-13-14-51_e2e_rec_ss2",
-            root_path / "2021-06-09-13-55-03_e2e_rec_ss2_backwards",
-            root_path / "2021-06-09-14-58-11_e2e_rec_ss3",
-            root_path / "2021-06-09-15-42-05_e2e_rec_ss3_backwards",
+            {'path': root_path / "2021-06-09-13-14-51_e2e_rec_ss2", 'start': 125, 'end': 49725},
+            {'path': root_path / "2021-06-09-13-55-03_e2e_rec_ss2_backwards", 'start': 150, 'end': 53625},
+            {'path': root_path / "2021-06-09-14-58-11_e2e_rec_ss3", 'start': 175, 'end': 43775},
+            {'path': root_path / "2021-06-09-15-42-05_e2e_rec_ss3_backwards", 'start': 100, 'end': 40625},
             root_path / "2021-06-09-16-24-59_e2e_rec_ss13",
             root_path / "2021-06-09-16-50-22_e2e_rec_ss13_backwards",
             root_path / "2021-06-10-12-59-59_e2e_ss4",
@@ -355,15 +371,15 @@ class NvidiaTrainDataset(NvidiaDataset):
             root_path / "2021-06-14-11-08-19_e2e_rec_ss14",
             root_path / "2021-06-14-11-22-05_e2e_rec_ss14",
             root_path / "2021-06-14-11-43-48_e2e_rec_ss14_backwards",
-            root_path / "2021-09-24-11-19-25_e2e_rec_ss10",
-            root_path / "2021-09-24-11-40-24_e2e_rec_ss10_2",
-            root_path / "2021-09-24-12-02-32_e2e_rec_ss10_3",
+            {'path': root_path / "2021-09-24-11-19-25_e2e_rec_ss10", 'start': 400, 'end': 34550},
+            {'path': root_path / "2021-09-24-11-40-24_e2e_rec_ss10_2", 'start': 150, 'end': 16000},
+            {'path': root_path / "2021-09-24-12-02-32_e2e_rec_ss10_3", 'start': 350, 'end': 8050},
             root_path / "2021-09-24-12-21-20_e2e_rec_ss10_backwards",
             root_path / "2021-09-24-13-39-38_e2e_rec_ss11",
-            root_path / "2021-09-30-13-57-00_e2e_rec_ss14",
+            {'path':  root_path / "2021-09-30-13-57-00_e2e_rec_ss14", 'start': 100, 'end': 3200},
             root_path / "2021-09-30-15-03-37_e2e_ss14_from_half_way",
             root_path / "2021-09-30-15-20-14_e2e_ss14_backwards",
-            root_path / "2021-09-30-15-56-59_e2e_ss14_attempt_2",
+            {'path':  root_path / "2021-09-30-15-56-59_e2e_ss14_attempt_2", 'start': 80, 'end': 54600},
             root_path / "2021-10-07-11-05-13_e2e_rec_ss3",
             root_path / "2021-10-07-11-44-52_e2e_rec_ss3_backwards",
             root_path / "2021-10-07-12-54-17_e2e_rec_ss4",
@@ -382,15 +398,16 @@ class NvidiaTrainDataset(NvidiaDataset):
             # '2021-11-08-12-08-40_e2e_rec_ss12_raanitsa_backward.bag' \
             ]
 
-        tr = transforms.Compose([Normalize()])
-        super().__init__(train_paths, tr, camera=camera,  output_modality=output_modality, n_branches=n_branches,
-                         n_waypoints=n_waypoints)
+        tr = transforms.Compose([AugmentImage(augment_config=augment_conf), Normalize()])
+        super().__init__(self.dataset_paths, tr, camera=camera,  output_modality=output_modality, n_branches=n_branches,
+                         n_waypoints=n_waypoints, metadata_file=metadata_file)
 
 
 class NvidiaValidationDataset(NvidiaDataset):
     # todo: remove default parameters
-    def __init__(self, root_path, output_modality="steering_angle", n_branches=3, n_waypoints=6, camera="front_wide"):
-        valid_paths = [
+    def __init__(self, root_path, output_modality="steering_angle", n_branches=3, n_waypoints=6, camera="front_wide",
+                 metadata_file="nvidia_frames.csv"):
+        self.dataset_paths = [
             root_path / "2021-05-28-15-19-48_e2e_sulaoja_20_30",
             root_path / "2021-06-07-14-20-07_e2e_rec_ss6",
             root_path / "2021-06-07-14-06-31_e2e_rec_ss6",
@@ -400,13 +417,13 @@ class NvidiaValidationDataset(NvidiaDataset):
             root_path / "2021-10-26-10-49-06_e2e_rec_ss20_elva",
             root_path / "2021-10-26-11-08-59_e2e_rec_ss20_elva_back",
             root_path / "2021-10-20-15-11-29_e2e_rec_vastse_ss13_17_back",
-            root_path / "2021-10-11-14-50-59_e2e_rec_vahi",
-            root_path / "2021-10-14-13-08-51_e2e_rec_vahi_backwards"
+            {'path': root_path / "2021-10-11-14-50-59_e2e_rec_vahi", 'start': 100, 'end': 15000},
+            {'path': root_path / "2021-10-14-13-08-51_e2e_rec_vahi_backwards", 'start': 80, 'end': 13420}
         ]
 
         tr = transforms.Compose([Normalize()])
-        super().__init__(valid_paths, tr, camera=camera, output_modality=output_modality, n_branches=n_branches,
-                         n_waypoints=n_waypoints)
+        super().__init__(self.dataset_paths, tr, camera=camera, output_modality=output_modality, n_branches=n_branches,
+                         n_waypoints=n_waypoints, metadata_file=metadata_file)
 
 
 class NvidiaWinterTrainDataset(NvidiaDataset):

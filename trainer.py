@@ -34,14 +34,15 @@ class Trainer:
     def force_cpu(self):
         self.device = 'cpu'
 
-    def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch, patience=10, fps=30):
+    def train(self, model, train_loader, valid_loader, optimizer, criterion, n_epoch,
+              patience=10, lr_patience=10, fps=30):
         if self.wandb_logging:
             wandb.watch(model, criterion)
 
         best_valid_loss = float('inf')
         epochs_of_no_improve = 0
 
-        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.1, verbose=True)
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=lr_patience, factor=0.1, verbose=True)
 
         for epoch in range(n_epoch):
 
@@ -110,6 +111,7 @@ class Trainer:
 
         return best_valid_loss
 
+    # TODO: make fps optional
     def calculate_metrics(self, fps, predictions, valid_loader):
         frames_df = valid_loader.dataset.frames
         if self.target_name == "steering_angle":

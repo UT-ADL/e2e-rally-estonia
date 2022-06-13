@@ -7,13 +7,15 @@ from pathlib import Path
 import torch
 from tqdm.auto import tqdm
 
+from camera_frame import CameraFrameTransformer
 from dataloading.nvidia import NvidiaDataset, Normalize
 
 from torchvision import transforms
 
 from trajectory import calculate_steering_angle
 
-N_WAYPOINTS = 10
+N_WAYPOINTS = 2
+REF_DISTANCE = 9.5
 
 
 def create_waypoint_error_plot(model, trainer, dataset_name, n_branches=3, n_waypoints=6):
@@ -24,10 +26,7 @@ def create_waypoint_error_plot(model, trainer, dataset_name, n_branches=3, n_way
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=False, num_workers=16)
     predictions = trainer.predict(model, dataloader)
 
-    wp_x_cols = [col for col in dataset.frames.columns if col.startswith('wp_x')]
-    wp_y_cols = [col for col in dataset.frames.columns if col.startswith('wp_y')]
-    waypoint_cols = np.column_stack((wp_x_cols, wp_y_cols)).reshape(-1)
-    true_waypoints = dataset.frames[waypoint_cols].to_numpy()
+    true_waypoints = dataset.get_waypoints()
 
 
     first_wp_error = np.hypot(predictions[:, 0] - true_waypoints[:, 0],
@@ -43,16 +42,20 @@ def create_waypoint_error_plot(model, trainer, dataset_name, n_branches=3, n_way
     # frechet_distances = np.array(
     #     [frdist(z[0].reshape(-1, 2), z[1].reshape(-1, 2)) for z in zipped_waypoints])
 
-    f, (ax) = plt.subplots(3, 1, figsize=(50, 25))
+    f, (ax) = plt.subplots(6, 1, figsize=(50, 25))
     ax[0].plot(dataset.frames.steering_angle, color="green")
 
     pred_steering_angles = []
     wp_progress_bar = tqdm(total=len(predictions), smoothing=0)
     wp_progress_bar.set_description("Calculating steering angles")
+
+    transformer = CameraFrameTransformer()
+
     for wp in predictions:
         steering_angle_wp = [0.0, 0.0]
-        steering_angle_wp.extend(wp[:10])
-        pred_steering_angles.append(calculate_steering_angle(steering_angle_wp, ref_distance=8))
+        steering_angle_wp.extend(wp[:2*N_WAYPOINTS])
+        wp_baselink = transformer.transform_waypoints(steering_angle_wp, "interfacea_link2")
+        pred_steering_angles.append(calculate_steering_angle(wp_baselink, ref_distance=REF_DISTANCE))
         wp_progress_bar.update(1)
     ax[0].plot(pred_steering_angles, color="red")
 
@@ -72,6 +75,17 @@ def create_waypoint_error_plot(model, trainer, dataset_name, n_branches=3, n_way
     ax[2].plot(last_wp_error, color="darkgreen")
     ax[2].set_title(dataset_name + " | last waypoint error")
     ax[2].legend(['last waypoint error'])
+
+    first_wp_long_error = predictions[:, 0] - true_waypoints[:, 0]
+    ax[3].plot(first_wp_long_error, color="darkred")
+    ax[3].set_title(dataset_name + " | first waypoint longitudinal error")
+
+    first_wp_lat_error = predictions[:, 1] - true_waypoints[:, 1]
+    ax[4].plot(first_wp_lat_error, color="darkred")
+    ax[4].set_title(dataset_name + " | first waypoint lateral error")
+
+    ax[5].plot(true_waypoints[:, 0], color="darkred")
+    ax[5].set_title(dataset_name + " | first waypoint lateral")
 
 
 def create_steering_angle_error_plot(model, trainer, dataset_name, n_branches=3):

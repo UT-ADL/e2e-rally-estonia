@@ -10,7 +10,7 @@ from torch import Tensor
 from torch.nn import L1Loss, MSELoss
 from torch.utils.data import ConcatDataset, WeightedRandomSampler
 #from torchsummary import summary
-
+from dataloading.camera import Camera, TurnSignal
 from dataloading.nvidia import NvidiaTrainDataset, NvidiaValidationDataset, NvidiaWinterTrainDataset, \
     NvidiaWinterValidationDataset, AugmentationConfig
 from dataloading.ouster import OusterTrainDataset, OusterValidationDataset
@@ -106,6 +106,13 @@ def parse_arguments():
     )
 
     argparser.add_argument(
+        '--learning-rate-patience',
+        type=int,
+        default=10,
+        help="Num of epochs after with learning rate will be retuced by factor of 0.1."
+    )
+
+    argparser.add_argument(
         '--weight-decay',
         type=float,
         default=1e-02,
@@ -127,11 +134,36 @@ def parse_arguments():
     )
 
     argparser.add_argument(
+        '--epoch-size',
+        type=int,
+        default=262_144,  # default batch-size^9
+        help='Number of training samples in one epochs.'
+    )
+
+    argparser.add_argument(
         '--batch-sampler',
         required=False,
-        choices=['weighted', 'random'],
+        choices=['random', 'weighted', 'camera-weighted', 'turn-weighted'],
         default='random',
         help='Sampler used for creating batches for training.'
+    )
+
+    argparser.add_argument(
+        '--side-camera-weight',
+        required=False,
+        type=float,
+        default=0.33,
+        help="Ratio of side camera images used for augmentation during training. "
+             "Default uses same ratio of all camera images."
+    )
+
+    argparser.add_argument(
+        '--turn-sampling-weight',
+        required=False,
+        type=float,
+        default=0.33,
+        help="Weight for frames with turn signal (left or right) when sampling batch during training. "
+             "Default uses same ratio as in dataset."
     )
 
     argparser.add_argument(
@@ -185,6 +217,13 @@ def parse_arguments():
         help='Pretrained model used to initialize weights.'
     )
 
+    argparser.add_argument(
+        '--metadata-file',
+        required=False,
+        default="nvidia_frames.csv",
+        help='Dataset metadata file used for reading metadata like steering angles etc.'
+    )
+
     return argparser.parse_args()
 
 
@@ -218,15 +257,20 @@ class TrainingConfig:
         self.output_modality = args.output_modality
         self.n_waypoints = args.num_waypoints
         self.learning_rate = args.learning_rate
+        self.learning_rate_patience = args.learning_rate_patience
         self.weight_decay = args.weight_decay
         self.patience = args.patience
         self.max_epochs = args.max_epochs
         self.batch_size = args.batch_size
+        self.epoch_size = args.epoch_size
         self.batch_sampler = args.batch_sampler
+        self.side_camera_weight = args.side_camera_weight
+        self.turn_sampling_weight = args.turn_sampling_weight
         self.num_workers = args.num_workers
         self.wandb_project = args.wandb_project
         self.loss = args.loss
         self.loss_discount_rate = args.loss_discount_rate
+        self.metadata_file = args.metadata_file
 
         self.n_input_channels = 1 if self.lidar_channel else 3
         if self.output_modality == "waypoints":
@@ -309,7 +353,7 @@ def train_model(model_name, train_conf, augment_conf):
     criterion = criterion.to(device)
 
     trainer.train(model, train_loader, valid_loader, optimizer, criterion,
-                  train_conf.max_epochs, train_conf.patience, train_conf.fps)
+                  train_conf.max_epochs, train_conf.patience, train_conf.learning_rate_patience, train_conf.fps)
 
 
 def load_model(model_name, n_input_channels=3, n_outputs=1, n_branches=1):
@@ -329,9 +373,11 @@ def load_data(train_conf, augment_conf):
     if train_conf.input_modality == "nvidia-camera":
         trainset = NvidiaTrainDataset(dataset_path, train_conf.output_modality,
                                       train_conf.n_branches, n_waypoints=train_conf.n_waypoints,
-                                      camera=train_conf.camera_name)
+                                      camera=train_conf.camera_name, augment_conf=augment_conf,
+                                      metadata_file=train_conf.metadata_file)
         validset = NvidiaValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches,
-                                           n_waypoints=train_conf.n_waypoints)
+                                           n_waypoints=train_conf.n_waypoints,
+                                           metadata_file=train_conf.metadata_file)
     elif train_conf.input_modality == "nvidia-camera-winter":
         trainset = NvidiaWinterTrainDataset(dataset_path, train_conf.output_modality,
                                             train_conf.n_branches, n_waypoints=train_conf.n_waypoints,
@@ -351,7 +397,7 @@ def load_data(train_conf, augment_conf):
 
     if train_conf.batch_sampler == 'weighted':
         weights = calculate_weights(trainset.frames)
-        sampler = WeightedRandomSampler(weights, num_samples=len(trainset), replacement=True)
+        sampler = WeightedRandomSampler(weights, num_samples=train_conf.epoch_size, replacement=True)
 
         train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=False,
                                                    sampler=sampler, num_workers=train_conf.num_workers,
@@ -360,6 +406,27 @@ def load_data(train_conf, augment_conf):
         train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=True,
                                                    num_workers=train_conf.num_workers, pin_memory=True,
                                                    persistent_workers=True)
+
+    elif train_conf.batch_sampler == 'camera-weighted':
+        center_camera_weight = (1-2*train_conf.side_camera_weight)
+        weights = [center_camera_weight if camera_type == Camera.FRONT_WIDE.value
+                   else train_conf.side_camera_weight
+                   for camera_type in trainset.frames["camera_type"].to_numpy()]
+        sampler = WeightedRandomSampler(weights, num_samples=train_conf.epoch_size, replacement=True)
+        train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=False,
+                                                  sampler=sampler, num_workers=train_conf.num_workers,
+                                                  pin_memory=True, persistent_workers=True)
+
+    elif train_conf.batch_sampler == 'turn-weighted':
+        without_turn_weight = (1-2*train_conf.turn_sampling_weight)
+        weights = [without_turn_weight if turn_signal == TurnSignal.STRAIGHT.value
+                   else train_conf.turn_sampling_weight
+                   for turn_signal in trainset.frames["turn_signal"].to_numpy()]
+        sampler = WeightedRandomSampler(weights, num_samples=train_conf.epoch_size, replacement=True)
+        train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=False,
+                                                  sampler=sampler, num_workers=train_conf.num_workers,
+                                                  pin_memory=True, persistent_workers=True)
+
     else:
         print(f"Unknown batch sampler {train_conf.batch_sampler}")
         sys.exit()

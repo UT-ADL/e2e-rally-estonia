@@ -15,6 +15,7 @@ from skimage import io
 from torch.nn.functional import one_hot
 from tqdm import tqdm
 
+from camera_frame import CameraFrameTransformer
 from dataloading.nvidia import NvidiaDataset
 from dataloading.ouster import OusterDataset
 from metrics.frechet_distance import frdist
@@ -303,6 +304,7 @@ def draw_waypoints_overlay(control, frame, image, model, model_type, resized):
         predicted_trajectory = pred_waypoints[conditional_selector]
     else:
         predicted_trajectory = model(image.unsqueeze(0), control).cpu().detach().numpy()[0]
+
     frechet_distance = frdist(predicted_trajectory.reshape(-1, 2), true_waypoints.reshape(-1, 2))
     frechet_color = RED if frechet_distance > 5.0 else GREEN
     cv2.putText(resized, 'Frechet distance: {:.4f}'.format(frechet_distance), (10, 190),
@@ -314,11 +316,13 @@ def draw_waypoints_overlay(control, frame, image, model, model_type, resized):
                 cv2.FONT_HERSHEY_SIMPLEX, 1, first_wp_color, 2, cv2.LINE_AA)
     draw_trajectory(resized, predicted_trajectory, RED)
 
+
+
     steering_angle_wp = [0.0, 0.0]
-    steering_angle_wp.extend(predicted_trajectory[:10])
-    #steering_angle_wp.extend(true_waypoints[:10])
-    pred_steering_angle = math.degrees(calculate_steering_angle(steering_angle_wp, ref_distance=6.857))
-    #pred_steering_angle = math.degrees(np.arctan(true_waypoints[3] / true_waypoints[2])) * 14.7
+    steering_angle_wp.extend(predicted_trajectory[:4])
+    transformer = CameraFrameTransformer()
+    baselink_wp = transformer.transform_waypoints(steering_angle_wp, "interfacea_link2")
+    pred_steering_angle = math.degrees(calculate_steering_angle(baselink_wp, ref_distance=9.5))
     cv2.putText(resized, 'Pred: {:.4f} deg'.format(pred_steering_angle), (10, 70),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, RED, 2, cv2.LINE_AA)
 

@@ -1,13 +1,14 @@
 import argparse
+import sys
 from pathlib import Path
 
 import numpy as np
 import torch
-from hyperopt import hp, fmin, tpe
+from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import trajectory
+import trajectory as tr
 from dataloading.nvidia import NvidiaValidationDataset
 from metrics.metrics import calculate_open_loop_metrics
 from pilotnet import PilotNetConditional
@@ -32,6 +33,14 @@ def parse_arguments():
     )
 
     argparser.add_argument(
+        '--waypoints-source',
+        choices=["model", "ground-truth"],
+        default="model",
+        required=False,
+        help="Method used for calculuting trajectory waypoints."
+    )
+
+    argparser.add_argument(
         '--model-path',
         default='models/20220511212923_waypoints-conditional/best.pt',
         required=False,
@@ -50,37 +59,62 @@ def parse_arguments():
 
 
 def optimize_lidar_crop(args):
+    dataset = NvidiaValidationDataset(Path(args.dataset_path), "waypoints", n_branches=3, n_waypoints=10,
+                                      metadata_file="nvidia_frames_ext2.csv")
+
     space = {
         'reference_distance': hp.uniform('reference_distance', 1.0, 20.0),
         'num_waypoints': hp.uniformint('num_waypoints', 2, 10),
+        'waypoints_source': args.waypoints_source,
         'dataset_path': args.dataset_path,
-        'model_path': args.model_path
+        'model_path': args.model_path,
+        'dataset': dataset
     }
 
-    best = fmin(optimize_fun, space, algo=tpe.suggest, max_evals=args.max_evals, show_progressbar=False)
+    trials = Trials()
+    best = fmin(optimize_fun, space, trials=trials, algo=tpe.suggest, max_evals=args.max_evals, show_progressbar=False)
 
     print(best)
+    print(trials.results)
 
 
 def optimize_fun(opt_args):
-    model = load_model(opt_args['model_path'])
     num_waypoints = opt_args['num_waypoints']
     reference_distance = opt_args['reference_distance']
+    dataset = opt_args['dataset']
 
-    dataset = NvidiaValidationDataset(Path(opt_args['dataset_path']), "waypoints", n_branches=3, n_waypoints=10)
-    dataloader = DataLoader(dataset, batch_size=128, shuffle=False, num_workers=8,
-                            pin_memory=True, persistent_workers=True)
+    waypoints_source = opt_args['waypoints_source']
+    if waypoints_source == 'model':
+        model = load_model(opt_args['model_path'])
+        dataloader = DataLoader(dataset, batch_size=128, shuffle=False, num_workers=8,
+                                pin_memory=True, persistent_workers=True)
+        trainer = ConditionalTrainer()
+        trajectories = trainer.predict(model, dataloader)
 
-    trainer = ConditionalTrainer()
-    predictions = trainer.predict(model, dataloader)
-    predicted_steering = []
-    for waypoints in tqdm(predictions, desc="Calculating steering angles"):
-        predicted_steering.append(trajectory.calculate_steering_angle(waypoints[:num_waypoints*2], reference_distance))
+    elif waypoints_source == 'ground-truth':
+        trajectories = dataset.get_waypoints()
+
+    else:
+        print(f"Uknown waypoints source {waypoints_source}")
+        sys.exit()
+
+    calculated_steering = []
+    for trajectory in tqdm(trajectories, desc="Calculating steering angles"):
+        # select number of waypoints from trajectory
+        waypoints = trajectory[:num_waypoints * 2]
+        # add vehicle position to the waypoints
+        waypoints = np.hstack(([0.0, 0.0], waypoints))
+        calculated_steering.append(tr.calculate_steering_angle(waypoints, reference_distance))
 
     true_steering = dataset.frames.steering_angle.to_numpy()
-    open_loop_metrics = calculate_open_loop_metrics(np.array(predicted_steering), true_steering, fps=10)
+    open_loop_metrics = calculate_open_loop_metrics(np.array(calculated_steering), true_steering, fps=10)
     print(f"reference distance: {reference_distance}, num_waypoints: {num_waypoints} loss: {open_loop_metrics['mae']}")
-    return open_loop_metrics['mae']
+
+    return {
+        'loss': open_loop_metrics['mae'],
+        'status': STATUS_OK,
+        'params': {'num_waypoints': num_waypoints, 'reference_distance': reference_distance}
+    }
 
 
 def load_model(model_path):
