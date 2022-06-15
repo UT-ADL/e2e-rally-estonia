@@ -83,10 +83,10 @@ class NvidiaDriveImporter:
 
         height = self.camera_crop_ymax - self.camera_crop_ymin
         width = self.camera_crop_xmax - self.camera_crop_xmin
-        print(f"Extracting camera image with crop {height}x{width}")
+        print(f"Extracting camera image with crop {width}x{height}")
         self.scaled_width = int(self.resize_scale * width)
         self.scaled_height = int(self.resize_scale * height)
-        print(f"Scaled images size {self.scaled_height}x{self.scaled_width}")
+        print(f"Scaled images size {self.scaled_width}x{self.scaled_height}")
 
     def import_bags(self):
         for bag_file in self.bag_files:
@@ -392,5 +392,5 @@ if __name__ == "__main__":
                                    args.camera_crop_xmin, args.camera_crop_xmax,
                                    args.camera_crop_ymin, args.camera_crop_ymax,
                                    args.resize_scale,
-                                   args.extract_side_cameras, args.extract_lidar_root, args.lidar_topic, args.image_type)
+                                   args.extract_side_cameras, args.extract_lidar, args.lidar_topic_root, args.image_type)
     importer.import_bags()
