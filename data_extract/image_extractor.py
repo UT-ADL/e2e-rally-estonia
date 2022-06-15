@@ -18,7 +18,7 @@ class NvidiaDriveImporter:
 
     def __init__(self, bag_files, extract_dir, resize_camera_images, crop_camera_images,
                  camera_crop_xmin, camera_crop_xmax, camera_crop_ymin, camera_crop_ymax,
-                 resize_scale, extract_side_cameras, extract_lidar, image_type):
+                 resize_scale, extract_side_cameras, extract_lidar, lidar_topic_root, image_type):
         self.bag_files = bag_files
         self.extract_dir = extract_dir
         self.resize_camera_image = resize_camera_images
@@ -30,6 +30,7 @@ class NvidiaDriveImporter:
         self.resize_scale = resize_scale
         self.extract_side_cameras = extract_side_cameras
         self.exract_lidar = extract_lidar
+        self.lidar_topic_root = lidar_topic_root
         self.image_type = image_type
 
         self.steer_topic = '/pacmod/parsed_tx/steer_rpt'
@@ -55,15 +56,17 @@ class NvidiaDriveImporter:
         # self.front_narrow_camera_topic = "/interfacea/link3/image/compressed"
         self.nvidia_topics = [front_wide_camera_topic_old, front_wide_camera_topic]
         if extract_side_cameras:
+            print('Extracting side cameras images.')
             self.nvidia_topics = self.nvidia_topics + [left_camera_topic_old, left_camera_topic,
                                                        right_camera_topic_old, right_camera_topic]
         self.topics = self.nvidia_topics
 
         # OUSTER images
         if extract_lidar:
-            self.lidar_amb_c = '/lidar_front/ambient_image'
-            self.lidar_int_c = '/lidar_front/intensity_image'
-            self.lidar_rng_c = '/lidar_front/range_image'
+            print("Extracting lidar images.")
+            self.lidar_amb_c = f'/{lidar_topic_root}/ambient_image'
+            self.lidar_int_c = f'/{lidar_topic_root}/intensity_image'
+            self.lidar_rng_c = f'/{lidar_topic_root}/range_image'
             self.lidar_topics = [self.lidar_amb_c, self.lidar_int_c, self.lidar_rng_c]
             self.topics = self.topics + self.lidar_topics
 
@@ -80,8 +83,10 @@ class NvidiaDriveImporter:
 
         height = self.camera_crop_ymax - self.camera_crop_ymin
         width = self.camera_crop_xmax - self.camera_crop_xmin
+        print(f"Extracting camera image with crop {height}x{width}")
         self.scaled_width = int(self.resize_scale * width)
         self.scaled_height = int(self.resize_scale * height)
+        print(f"Scaled images size {self.scaled_height}x{self.scaled_width}")
 
     def import_bags(self):
         for bag_file in self.bag_files:
@@ -348,6 +353,11 @@ if __name__ == "__main__":
                         action="store_true",
                         help='Extract lidar images')
 
+    parser.add_argument("--lidar-topic-root",
+                        default="lidar_center",
+                        required=False,
+                        help='Lidar topic to use to extract images')
+
     parser.add_argument("--camera-crop-xmin",
                         default=300,
                         type=int,
@@ -382,5 +392,5 @@ if __name__ == "__main__":
                                    args.camera_crop_xmin, args.camera_crop_xmax,
                                    args.camera_crop_ymin, args.camera_crop_ymax,
                                    args.resize_scale,
-                                   args.extract_side_cameras, args.extract_lidar, args.image_type)
+                                   args.extract_side_cameras, args.extract_lidar_root, args.lidar_topic, args.image_type)
     importer.import_bags()
