@@ -158,6 +158,15 @@ def parse_arguments():
     )
 
     argparser.add_argument(
+        '--side-camera-steering-thres',
+        required=False,
+        type=float,
+        default=None,
+        help="Threshold for filter frames by steering angle value. "
+             "Only frame between given +-threshold is used for training."
+    )
+
+    argparser.add_argument(
         '--turn-sampling-weight',
         required=False,
         type=float,
@@ -265,6 +274,7 @@ class TrainingConfig:
         self.epoch_size = args.epoch_size
         self.batch_sampler = args.batch_sampler
         self.side_camera_weight = args.side_camera_weight
+        self.side_camera_steering_thres = args.side_camera_steering_thres
         self.turn_sampling_weight = args.turn_sampling_weight
         self.num_workers = args.num_workers
         self.wandb_project = args.wandb_project
@@ -371,10 +381,12 @@ def load_data(train_conf, augment_conf):
 
     dataset_path = Path(train_conf.dataset_folder)
     if train_conf.input_modality == "nvidia-camera":
-        trainset = NvidiaTrainDataset(dataset_path, train_conf.output_modality,
-                                      train_conf.n_branches, n_waypoints=train_conf.n_waypoints,
-                                      camera=train_conf.camera_name, augment_conf=augment_conf,
-                                      metadata_file=train_conf.metadata_file)
+        trainset = NvidiaTrainDataset(dataset_path, train_conf.output_modality, train_conf.n_branches,
+                                      n_waypoints=train_conf.n_waypoints,
+                                      camera=train_conf.camera_name,
+                                      augment_conf=augment_conf,
+                                      metadata_file=train_conf.metadata_file,
+                                      side_camera_steering_thres=train_conf.side_camera_steering_thres)
         validset = NvidiaValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches,
                                            n_waypoints=train_conf.n_waypoints,
                                            metadata_file=train_conf.metadata_file)
@@ -439,15 +451,12 @@ def load_data(train_conf, augment_conf):
 
 
 def calculate_weights(df):
-    # optimized_bins = np.array([df["steering_angle"].min() - 0.00001, -2.78245811e+00, -1.02905812e+00, -4.43559368e-01,
-    #                            -1.64549582e-01, 6.90239861e-03, 1.69872354e-01, 4.35963640e-01,
-    #                            9.63913148e-01, 2.70831896e+00, df["steering_angle"].max() + 0.00001])
-
-    optimized_bins = np.array([df["steering_angle"].min() - 0.00001,
-                               -1.121, -0.176, 0.206, 1.088,
+    optimized_bins = np.array([df["steering_angle"].min() - 0.00001, -5.26168, -2.91877, -1.71195, -1.05283, -0.69548,
+                               -0.46468, -0.29645, -0.16921, -0.06559, 0.01271, 0.08248, 0.17921,
+                               0.29897, 0.45133, 0.65823, 0.98126, 1.57150, 2.78337, 5.05328,
                                df["steering_angle"].max() + 0.00001])
 
-    bin_ranges = pd.cut(df["steering_angle"], optimized_bins, labels=np.arange(1, 6))
+    bin_ranges = pd.cut(df["steering_angle"], optimized_bins, labels=np.arange(1, len(optimized_bins)))
     df["bins"] = bin_ranges
     counts = bin_ranges.value_counts(sort=False)
     widths = np.diff(optimized_bins)
