@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
 
-#SBATCH --array=14-33
+#SBATCH --array=0-8
 BAGS=(
         '2022-06-17-13-21-37_e2e_elva__steering.bag' \
         '2022-06-17-13-21-51_e2e_elva__steering.bag' \
