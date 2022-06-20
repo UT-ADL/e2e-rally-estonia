@@ -177,7 +177,7 @@ class NvidiaDriveImporter:
 
                 elif topic == self.turn_topic:
                     turn_dict["timestamp"].append(msg_timestamp)
-                    turn_dict["turn_signal"].append(int(msg.manual_input))
+                    turn_dict["turn_signal"].append(int(msg.output))
 
                 elif topic in self.nvidia_topics:
                     camera_name = self.topic_to_camera_name_map[topic]
