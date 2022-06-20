@@ -43,18 +43,20 @@ def create_prediction_video(dataset_folder, output_modality, model_path, model_t
     dataset = NvidiaDataset([dataset_path], name=dataset_path.name, output_modality=output_modality,
                             n_branches=3, n_waypoints=10)
 
+    #dataset.frames = dataset.frames[9160:9500]
+
     temp_frames_folder = dataset_path / 'temp'
     shutil.rmtree(temp_frames_folder, ignore_errors=True)
     temp_frames_folder.mkdir()
 
     if output_modality == "steering_angle":
-        steering_predictions = get_steering_predictions(dataset_path, model_path)
+        steering_predictions = get_predictions(dataset_path, model_path, "steering_angle")
         speed_predictions = get_speed_predictions(dataset)
 
         draw_prediction_frames(dataset, steering_predictions, speed_predictions, temp_frames_folder)
 
     if output_modality == "waypoints":
-        trajectory = get_trajectory_predictions(dataset_path, model_path, model_type)
+        trajectory = get_predictions(dataset_path, model_path, "waypoints")
         draw_prediction_frames_wp(dataset, trajectory, temp_frames_folder)
 
     output_video_path = dataset_path / f"{str(Path(model_path).parent.name)}.mp4"
@@ -65,62 +67,38 @@ def create_prediction_video(dataset_folder, output_modality, model_path, model_t
     print(f"{dataset.name}: output video {output_video_path} created.")
 
 
-def get_steering_predictions(dataset_path, model_path):
-    print(f"{dataset_path.name}: steering predictions")
-    trainer = Trainer(None, target_name="steering_angle", n_conditional_branches=3)
+def get_predictions(dataset_path, model_path, output_modality):
+    print(f"{dataset_path.name}: {output_modality} predictions")
     #trainer.force_cpu()  # not enough memory on GPU for parallel processing  # TODO: make input argument
-    if model_type == "pilotnet-conditional":
-        model = PilotNetConditional(n_branches=3, n_outputs=1)
-        trainer = ConditionalTrainer(None, target_name="steering_angle", n_conditional_branches=3)
-    elif model_type == "pilotnet-control":
-        model = PilotnetControl(n_outputs=1)
-        trainer = ControlTrainer(None, target_name="steering_angle", n_conditional_branches=3)
-    else:
-        print(f"Unknown model type '{args.model_type}'")
-        sys.exit()
-
-
-    model.load_state_dict(torch.load(model_path))
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
-    model.eval()
-
-    tr = transforms.Compose([NvidiaCropWide(), Normalize()])
-    dataset = NvidiaDataset([Path(dataset_path)],
-                            tr, name=dataset_path.name, output_modality="steering_angle", n_branches=3)
-    validloader_tr = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False,
-                                         num_workers=16, pin_memory=True, persistent_workers=True)
-    steering_predictions = trainer.predict(model, validloader_tr)
-    return steering_predictions
-
-def get_trajectory_predictions(dataset_path, model_path, model_type):
-    print(f"{dataset_path.name}: trajectory predictions")
-    #trainer.force_cpu()  # not enough memory on GPU for parallel processing  # TODO: make input argument
-
-    n_outputs = 20
+    n_outputs = 1 if output_modality == "steering_angle" else 20
     if model_type == "pilotnet-conditional":
         model = PilotNetConditional(n_branches=3, n_outputs=n_outputs)
-        trainer = ConditionalTrainer(None, target_name="waypoints", n_conditional_branches=3)
+        trainer = ConditionalTrainer(None, target_name=output_modality, n_conditional_branches=3)
     elif model_type == "pilotnet-control":
-        model = PilotnetControl(n_outputs=n_outputs)
-        trainer = ControlTrainer(None, target_name="waypoints", n_conditional_branches=3)
+        model = PilotnetControl(n_outputs=1)
+        trainer = ControlTrainer(None, target_name=output_modality, n_conditional_branches=3)
     else:
         print(f"Unknown model type '{args.model_type}'")
         sys.exit()
+
 
     model.load_state_dict(torch.load(model_path))
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model.eval()
 
-    tr = transforms.Compose([Normalize()])
-    # TODO: remove hardcoded path
-    dataset = NvidiaDataset([Path("/home/romet/data2/datasets/rally-estonia/dataset-new-small/summer2021/2021-10-26-10-49-06_e2e_rec_ss20_elva")], tr,
-                            name=dataset_path.name, output_modality="waypoints", n_waypoints=10, n_branches=3)
-    validloader_tr = torch.utils.data.DataLoader(dataset, batch_size=512, shuffle=False,
-                                         num_workers=16, pin_memory=True, persistent_workers=True)
-    waypoints = trainer.predict(model, validloader_tr)
-    return waypoints
+    dataloader = get_data_loader(dataset_path, output_modality)
+    steering_predictions = trainer.predict(model, dataloader)
+    return steering_predictions
+
+
+def get_data_loader(dataset_path, output_modality):
+    tr = transforms.Compose([NvidiaCropWide(), Normalize()])
+    dataset = NvidiaDataset([Path(dataset_path)],
+                            tr, name=dataset_path.name, output_modality=output_modality, n_branches=3)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False,
+                                                 num_workers=16, pin_memory=True, persistent_workers=True)
+    return dataloader
 
 
 def get_speed_predictions(dataset):
