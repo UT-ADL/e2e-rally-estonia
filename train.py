@@ -8,14 +8,14 @@ import torch
 import wandb
 from torch import Tensor
 from torch.nn import L1Loss, MSELoss
-from torch.utils.data import ConcatDataset, WeightedRandomSampler
+from torch.utils.data import ConcatDataset, RandomSampler, WeightedRandomSampler
 #from torchsummary import summary
 from dataloading.camera import Camera, TurnSignal
 from dataloading.nvidia import NvidiaTrainDataset, NvidiaValidationDataset, NvidiaWinterTrainDataset, \
     NvidiaWinterValidationDataset, AugmentationConfig
 from dataloading.ouster import OusterTrainDataset, OusterValidationDataset
 from efficient_net import effnetv2_s
-from pilotnet import PilotNetConditional, PilotnetControl
+from pilotnet import PilotNetConditional, PilotnetControl, PilotNet
 from trainer import ControlTrainer, ConditionalTrainer, PilotNetTrainer
 
 
@@ -143,8 +143,8 @@ def parse_arguments():
     argparser.add_argument(
         '--batch-sampler',
         required=False,
-        choices=['random', 'weighted', 'camera-weighted', 'turn-weighted'],
-        default='random',
+        choices=['old', 'random', 'weighted', 'camera-weighted', 'turn-weighted'],
+        default='old',
         help='Sampler used for creating batches for training.'
     )
 
@@ -307,7 +307,10 @@ def train_model(model_name, train_conf, augment_conf):
     train_loader, valid_loader = load_data(train_conf, augment_conf)
 
     # TODO: model and trainer should be combined
-    if train_conf.model_type == "pilotnet-control":
+    if train_conf.model_type == "pilotnet":
+        model = PilotNet(train_conf.n_input_channels)
+        trainer = PilotNetTrainer(model_name, train_conf.output_modality)
+    elif train_conf.model_type == "pilotnet-control":
         model = PilotnetControl(train_conf.n_input_channels, train_conf.n_outputs)
         trainer = ControlTrainer(model_name, train_conf.output_modality, train_conf.n_branches,
                                  train_conf.wandb_project)
@@ -319,9 +322,8 @@ def train_model(model_name, train_conf, augment_conf):
         model = effnetv2_s()
         trainer = PilotNetTrainer(model_name, target_name="steering_angle")
     else:
-        model = PilotNetConditional(train_conf.n_input_channels, train_conf.n_outputs, train_conf.n_branches)
-        trainer = ConditionalTrainer(model_name, train_conf.output_modality, train_conf.n_branches,
-                                     train_conf.wandb_project)
+        print(f"Uknown output model type {train_conf.model_type}")
+        sys.exit()
 
     #summary(model, input_size=(3, 660, 172), device="cpu")
     #summary(model, input_size=(3, 264, 68), device="cpu")
@@ -414,11 +416,15 @@ def load_data(train_conf, augment_conf):
         train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=False,
                                                    sampler=sampler, num_workers=train_conf.num_workers,
                                                    pin_memory=True, persistent_workers=True)
-    elif train_conf.batch_sampler == 'random':
+    elif train_conf.batch_sampler == 'old':
         train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=True,
                                                    num_workers=train_conf.num_workers, pin_memory=True,
                                                    persistent_workers=True)
-
+    elif train_conf.batch_sampler == 'random':
+        sampler = RandomSampler(data_source=trainset, num_samples=train_conf.epoch_size, replacement=True)
+        train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, sampler=sampler,
+                                                   num_workers=train_conf.num_workers, pin_memory=True,
+                                                   persistent_workers=True)
     elif train_conf.batch_sampler == 'camera-weighted':
         center_camera_weight = (1-2*train_conf.side_camera_weight)
         weights = [center_camera_weight if camera_type == Camera.FRONT_WIDE.value
@@ -428,7 +434,6 @@ def load_data(train_conf, augment_conf):
         train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=False,
                                                   sampler=sampler, num_workers=train_conf.num_workers,
                                                   pin_memory=True, persistent_workers=True)
-
     elif train_conf.batch_sampler == 'turn-weighted':
         without_turn_weight = (1-2*train_conf.turn_sampling_weight)
         weights = [without_turn_weight if turn_signal == TurnSignal.STRAIGHT.value
@@ -438,7 +443,6 @@ def load_data(train_conf, augment_conf):
         train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_conf.batch_size, shuffle=False,
                                                   sampler=sampler, num_workers=train_conf.num_workers,
                                                   pin_memory=True, persistent_workers=True)
-
     else:
         print(f"Unknown batch sampler {train_conf.batch_sampler}")
         sys.exit()
