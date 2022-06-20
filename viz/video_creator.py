@@ -14,7 +14,7 @@ from skimage import io
 from torchvision import transforms
 from tqdm.auto import tqdm
 
-from dataloading.nvidia import NvidiaDataset, Normalize
+from dataloading.nvidia import NvidiaDataset, Normalize, NvidiaCropWide
 from pilotnet import PilotNetConditional, PilotnetControl
 from trainer import Trainer, ConditionalTrainer, ControlTrainer
 from velocity_model.velocity_model import VelocityModel
@@ -42,8 +42,6 @@ def create_prediction_video(dataset_folder, output_modality, model_path, model_t
     dataset_path = Path(dataset_folder)
     dataset = NvidiaDataset([dataset_path], name=dataset_path.name, output_modality=output_modality,
                             n_branches=3, n_waypoints=10)
-
-    #dataset.frames = dataset.frames[9160:23070]
 
     temp_frames_folder = dataset_path / 'temp'
     shutil.rmtree(temp_frames_folder, ignore_errors=True)
@@ -87,10 +85,8 @@ def get_steering_predictions(dataset_path, model_path):
     model.to(device)
     model.eval()
 
-    tr = transforms.Compose([Normalize()])
-    # TODO: remove hardcoded path
-    dataset = NvidiaDataset([Path(
-        "/home/romet/data2/datasets/rally-estonia/dataset-new-small/summer2021/2021-10-26-10-49-06_e2e_rec_ss20_elva")],
+    tr = transforms.Compose([NvidiaCropWide(), Normalize()])
+    dataset = NvidiaDataset([Path(dataset_path)],
                             tr, name=dataset_path.name, output_modality="steering_angle", n_branches=3)
     validloader_tr = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False,
                                          num_workers=16, pin_memory=True, persistent_workers=True)
