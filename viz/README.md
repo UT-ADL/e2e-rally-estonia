@@ -3,6 +3,9 @@ This package containes code for visualisation scripts, like creating autonomous 
 
 ## Video creator
 
+You need to use dataset with full images for video creator! Dataset with cropped images is too low resolution and will
+overlay is not fitted properly.
+
 ### Creating on-policy video from (autonomous) drive:
 ```bash
 python -m viz.video_creator --dataset-folder=/gpfs/space/projects/Bolt/dataset/<drive-name> --video-type=driving
