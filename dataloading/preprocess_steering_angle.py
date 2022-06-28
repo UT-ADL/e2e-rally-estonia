@@ -9,9 +9,6 @@ import trajectory
 from dataloading.camera import Camera
 from dataloading.nvidia import NvidiaValidationDataset, NvidiaTrainDataset
 
-NUM_WAYPOINTS = 2
-REFERENCE_DISTANCE = 9.5
-
 
 def parse_arguments():
     argparser = argparse.ArgumentParser()
@@ -54,16 +51,15 @@ def create_steering_angles(frames_df, camera):
     waypoints = get_waypoints(frames_df, camera)
     steering_angles = []
     for i in range(waypoints.shape[0]):
-        trajectory_waypoints = np.hstack(([0.0, 0.0], waypoints[i]))
-        calculated_steering_angle = trajectory.calculate_steering_angle(trajectory_waypoints, REFERENCE_DISTANCE)
+        calculated_steering_angle = trajectory.calculate_steering_angle(waypoints[i])
         steering_angles.append(calculated_steering_angle)
         #print(trajectory_waypoints, calculated_steering_angle)
     frames_df[f"steering_angle_{camera}"] = steering_angles
 
 
 def get_waypoints(frames_df, camera_name):
-    wp_x_cols = [f"wp{i}_{camera_name}_x" for i in np.arange(1, NUM_WAYPOINTS + 1)]
-    wp_y_cols = [f"wp{i}_{camera_name}_y" for i in np.arange(1, NUM_WAYPOINTS + 1)]
+    wp_x_cols = [f"wp{i}_{camera_name}_x" for i in np.arange(1, 11)]
+    wp_y_cols = [f"wp{i}_{camera_name}_y" for i in np.arange(1, 11)]
     waypoint_cols = np.column_stack((wp_x_cols, wp_y_cols)).reshape(-1)
     return frames_df[waypoint_cols].to_numpy()
 
