@@ -10,7 +10,7 @@ class PilotNet(nn.Module):
     Conditonal control is concatenated with input features to each policy branchy
     """
 
-    def __init__(self, n_input_channels=3):
+    def __init__(self, n_input_channels=3, n_outputs=1):
         super(PilotNet, self).__init__()
 
         self.features = nn.Sequential(
@@ -41,7 +41,7 @@ class PilotNet(nn.Module):
             nn.LeakyReLU(),
             nn.Linear(50, 10),
             nn.LeakyReLU(),
-            nn.Linear(10, 1),
+            nn.Linear(10, n_outputs),
         )
 
     def forward(self, x):
@@ -62,7 +62,6 @@ class PilotNetConditional(nn.Module):
         super(PilotNetConditional, self).__init__()
 
         self.features = nn.Sequential(
-            nn.BatchNorm2d(3),
             nn.Conv2d(n_input_channels, 24, 5, stride=2),
             nn.BatchNorm2d(24),
             nn.LeakyReLU(),
@@ -113,7 +112,6 @@ class PilotnetControl(nn.Module):
         super(PilotnetControl, self).__init__()
 
         self.features = nn.Sequential(
-            nn.BatchNorm2d(3),
             nn.Conv2d(n_input_channels, 24, 5, stride=2),
             nn.BatchNorm2d(24),
             nn.LeakyReLU(),
