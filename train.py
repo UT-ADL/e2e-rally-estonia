@@ -308,8 +308,8 @@ def train_model(model_name, train_conf, augment_conf):
 
     # TODO: model and trainer should be combined
     if train_conf.model_type == "pilotnet":
-        model = PilotNet(train_conf.n_input_channels)
-        trainer = PilotNetTrainer(model_name, train_conf.output_modality)
+        model = PilotNet(train_conf.n_input_channels, n_outputs=train_conf.n_outputs)
+        trainer = PilotNetTrainer(model_name, train_conf.output_modality, wandb_project=train_conf.wandb_project)
     elif train_conf.model_type == "pilotnet-control":
         model = PilotnetControl(train_conf.n_input_channels, train_conf.n_outputs)
         trainer = ControlTrainer(model_name, train_conf.output_modality, train_conf.n_branches,
@@ -332,11 +332,11 @@ def train_model(model_name, train_conf, augment_conf):
         print(f"Initializing weights with pretrained model: {train_conf.pretrained_model}")
         pretrained_model = load_model(train_conf.pretrained_model,
                                       train_conf.n_input_channels,
-                                      train_conf.n_outputs,
-                                      n_branches=1)
+                                      train_conf.n_outputs)
         model.features.load_state_dict(pretrained_model.features.state_dict())
+
         for i in range(train_conf.n_branches):
-            model.conditional_branches[i].load_state_dict(pretrained_model.conditional_branches[0].state_dict())
+            model.conditional_branches[i].load_state_dict(pretrained_model.regressor.state_dict())
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     weights = torch.FloatTensor([(train_conf.loss_discount_rate ** i, train_conf.loss_discount_rate ** i)
@@ -368,8 +368,8 @@ def train_model(model_name, train_conf, augment_conf):
                   train_conf.max_epochs, train_conf.patience, train_conf.learning_rate_patience, train_conf.fps)
 
 
-def load_model(model_name, n_input_channels=3, n_outputs=1, n_branches=1):
-    model = PilotNetConditional(n_input_channels=n_input_channels, n_outputs=n_outputs, n_branches=n_branches)
+def load_model(model_name, n_input_channels=3, n_outputs=1):
+    model = PilotNet(n_input_channels=n_input_channels, n_outputs=n_outputs)
     model.load_state_dict(torch.load(f"models/{model_name}/best.pt"))
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
