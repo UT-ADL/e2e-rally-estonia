@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import trajectory as tr
+from camera_frame import CameraFrameTransformer
 from dataloading.nvidia import NvidiaValidationDataset
 from metrics.metrics import calculate_open_loop_metrics
 from pilotnet import PilotNetConditional
@@ -100,9 +101,11 @@ def optimize_fun(opt_args):
         print(f"Uknown waypoints source {waypoints_source}")
         sys.exit()
 
+    transformer = CameraFrameTransformer()
     calculated_steering = []
-    for trajectory in tqdm(trajectories, desc="Calculating steering angles"):
-        calculated_steering.append(tr.calculate_steering_angle(trajectory, num_waypoints,
+    for wp in tqdm(trajectories, desc="Calculating steering angles"):
+        wp_baselink = transformer.transform_waypoints(wp, "interfacea_link2")
+        calculated_steering.append(tr.calculate_steering_angle(wp_baselink, num_waypoints,
                                                                reference_distance, use_vehicle_pos))
 
     true_steering = dataset.frames.steering_angle.to_numpy()
