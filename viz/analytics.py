@@ -14,10 +14,6 @@ from torchvision import transforms
 
 from trajectory import calculate_steering_angle
 
-N_WAYPOINTS = 2
-REF_DISTANCE = 9.5
-
-
 def create_waypoint_error_plot(model, trainer, dataset_name, n_branches=3, n_waypoints=6):
     root_path = Path("/home/romet/data2/datasets/rally-estonia/dataset-new-small/summer2021")
     tr = transforms.Compose([Normalize()])
@@ -52,10 +48,8 @@ def create_waypoint_error_plot(model, trainer, dataset_name, n_branches=3, n_way
     transformer = CameraFrameTransformer()
 
     for wp in predictions:
-        steering_angle_wp = [0.0, 0.0]
-        steering_angle_wp.extend(wp[:2*N_WAYPOINTS])
-        wp_baselink = transformer.transform_waypoints(steering_angle_wp, "interfacea_link2")
-        pred_steering_angles.append(calculate_steering_angle(wp_baselink, ref_distance=REF_DISTANCE))
+        wp_baselink = transformer.transform_waypoints(wp, "interfacea_link2")
+        pred_steering_angles.append(calculate_steering_angle(wp_baselink))
         wp_progress_bar.update(1)
     ax[0].plot(pred_steering_angles, color="red")
 

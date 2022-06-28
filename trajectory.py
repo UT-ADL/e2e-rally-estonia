@@ -42,7 +42,15 @@ def fit_circle(x, y):
     return xc_2, yc_2, R_2
 
 
-def calculate_steering_angle(waypoints, ref_distance=8.5):
+def calculate_steering_angle(waypoints, num_waypoints=2, ref_distance=8.5, use_vehicle_pos=True):
+
+    # use specified number of waypoints
+    waypoints = waypoints[:2*num_waypoints]
+
+    # add current vehicle position to the trajectory
+    if use_vehicle_pos:
+        waypoints = np.hstack(([0.0, 0.0], waypoints))
+
     wp_x = waypoints[::2]
     wp_y = waypoints[1::2]
     x_center, y_center, radius = fit_circle(wp_x, wp_y)

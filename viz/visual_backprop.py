@@ -317,12 +317,9 @@ def draw_waypoints_overlay(control, frame, image, model, model_type, resized):
     draw_trajectory(resized, predicted_trajectory, RED)
 
 
-
-    steering_angle_wp = [0.0, 0.0]
-    steering_angle_wp.extend(predicted_trajectory[:4])
     transformer = CameraFrameTransformer()
-    baselink_wp = transformer.transform_waypoints(steering_angle_wp, "interfacea_link2")
-    pred_steering_angle = math.degrees(calculate_steering_angle(baselink_wp, ref_distance=9.5))
+    baselink_wp = transformer.transform_waypoints(predicted_trajectory, "interfacea_link2")
+    pred_steering_angle = math.degrees(calculate_steering_angle(baselink_wp))
     cv2.putText(resized, 'Pred: {:.4f} deg'.format(pred_steering_angle), (10, 70),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, RED, 2, cv2.LINE_AA)
 
