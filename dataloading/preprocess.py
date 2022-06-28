@@ -106,6 +106,10 @@ def get_dataset_paths(root_path):
         root_path / "2021-10-20-15-11-29_e2e_rec_vastse_ss13_17_back",
         root_path / "2021-10-11-14-50-59_e2e_rec_vahi",
         root_path / "2021-10-14-13-08-51_e2e_rec_vahi_backwards",
+        root_path / "2022-06-10-13-23-01_e2e_elva_forward",
+        root_path / "2022-06-10-13-03-20_e2e_elva_backward",
+        # root_path / "2021-11-08-11-24-44_e2e_rec_ss12_raanitsa",
+        # root_path / "2021-11-08-12-08-40_e2e_rec_ss12_raanitsa_backward",
         #         root_path / "2022-01-28-10-21-14_e2e_rec_peipsiaare_forward",
         #         root_path / "2022-01-28-12-46-59_e2e_rec_peipsiaare_backward",
         #         root_path / "2022-01-14-10-05-16_e2e_rec_raanitsa_forward",
@@ -325,6 +329,7 @@ def fix_frames(root_path):
     frames_df = pd.read_csv(dataset_path / "nvidia_frames_ext.csv", index_col='index')
     frames_df.loc[frames_df.iloc[16159:16457].index, 'turn_signal'] = RIGHT
     frames_df.loc[frames_df.iloc[18257:18748].index, 'turn_signal'] = RIGHT
+    frames_df.loc[frames_df.iloc[24473:24733].index, 'turn_signal'] = SKIP
     frames_df.to_csv(dataset_path / "nvidia_frames_ext.csv", header=True)
 
     dataset_path = root_path / "2021-06-14-11-43-48_e2e_rec_ss14_backwards"
@@ -409,6 +414,18 @@ def fix_frames(root_path):
     frames_df.loc[frames_df.iloc[1765:2153].index, 'turn_signal'] = LEFT
     frames_df.to_csv(dataset_path / "nvidia_frames_ext.csv", header=True)
     # Dirty/wet camera
+
+    dataset_path = root_path / "2021-09-24-11-19-25_e2e_rec_ss10"
+    frames_df = pd.read_csv(dataset_path / "nvidia_frames_ext.csv", index_col='index')
+    frames_df.loc[frames_df.iloc[26250:26470].index, 'turn_signal'] = SKIP
+    frames_df.loc[frames_df.iloc[27210:27620].index, 'turn_signal'] = SKIP
+    frames_df.loc[frames_df.iloc[29250:29445].index, 'turn_signal'] = SKIP
+    frames_df.to_csv(dataset_path / "nvidia_frames_ext.csv", header=True)
+
+    dataset_path = root_path / "2021-09-24-11-40-24_e2e_rec_ss10_2"
+    frames_df = pd.read_csv(dataset_path / "nvidia_frames_ext.csv", index_col='index')
+    frames_df.loc[frames_df.iloc[5440:6025].index, 'turn_signal'] = SKIP
+    frames_df.to_csv(dataset_path / "nvidia_frames_ext.csv", header=True)
 
 
 if __name__ == "__main__":
