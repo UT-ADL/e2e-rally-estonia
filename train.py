@@ -158,15 +158,6 @@ def parse_arguments():
     )
 
     argparser.add_argument(
-        '--side-camera-steering-thres',
-        required=False,
-        type=float,
-        default=None,
-        help="Threshold for filter frames by steering angle value. "
-             "Only frame between given +-threshold is used for training."
-    )
-
-    argparser.add_argument(
         '--turn-sampling-weight',
         required=False,
         type=float,
@@ -274,7 +265,6 @@ class TrainingConfig:
         self.epoch_size = args.epoch_size
         self.batch_sampler = args.batch_sampler
         self.side_camera_weight = args.side_camera_weight
-        self.side_camera_steering_thres = args.side_camera_steering_thres
         self.turn_sampling_weight = args.turn_sampling_weight
         self.num_workers = args.num_workers
         self.wandb_project = args.wandb_project
@@ -387,8 +377,7 @@ def load_data(train_conf, augment_conf):
                                       n_waypoints=train_conf.n_waypoints,
                                       camera=train_conf.camera_name,
                                       augment_conf=augment_conf,
-                                      metadata_file=train_conf.metadata_file,
-                                      side_camera_steering_thres=train_conf.side_camera_steering_thres)
+                                      metadata_file=train_conf.metadata_file)
         validset = NvidiaValidationDataset(dataset_path, train_conf.output_modality, train_conf.n_branches,
                                            n_waypoints=train_conf.n_waypoints,
                                            metadata_file=train_conf.metadata_file)
