@@ -60,11 +60,12 @@ def parse_arguments():
 
 def optimize_lidar_crop(args):
     dataset = NvidiaValidationDataset(Path(args.dataset_path), "waypoints", n_branches=3, n_waypoints=10,
-                                      metadata_file="nvidia_frames_ext2.csv")
+                                      metadata_file="nvidia_frames_ext.csv")
 
     space = {
         'reference_distance': hp.uniform('reference_distance', 1.0, 20.0),
         'num_waypoints': hp.uniformint('num_waypoints', 2, 10),
+        'use_vehicle_pos': hp.choice('use_vehicle_pos', [True, False]),
         'waypoints_source': args.waypoints_source,
         'dataset_path': args.dataset_path,
         'model_path': args.model_path,
@@ -81,6 +82,7 @@ def optimize_lidar_crop(args):
 def optimize_fun(opt_args):
     num_waypoints = opt_args['num_waypoints']
     reference_distance = opt_args['reference_distance']
+    use_vehicle_pos = opt_args['use_vehicle_pos']
     dataset = opt_args['dataset']
 
     waypoints_source = opt_args['waypoints_source']
@@ -100,20 +102,18 @@ def optimize_fun(opt_args):
 
     calculated_steering = []
     for trajectory in tqdm(trajectories, desc="Calculating steering angles"):
-        # select number of waypoints from trajectory
-        waypoints = trajectory[:num_waypoints * 2]
-        # add vehicle position to the waypoints
-        waypoints = np.hstack(([0.0, 0.0], waypoints))
-        calculated_steering.append(tr.calculate_steering_angle(waypoints, reference_distance))
+        calculated_steering.append(tr.calculate_steering_angle(trajectory, num_waypoints,
+                                                               reference_distance, use_vehicle_pos))
 
     true_steering = dataset.frames.steering_angle.to_numpy()
-    open_loop_metrics = calculate_open_loop_metrics(np.array(calculated_steering), true_steering, fps=10)
-    print(f"reference distance: {reference_distance}, num_waypoints: {num_waypoints} loss: {open_loop_metrics['mae']}")
+    open_loop_metrics = calculate_open_loop_metrics(np.array(calculated_steering), true_steering, fps=30)
+    print(f"reference distance: {reference_distance}, num_waypoints: {num_waypoints}, "
+          f"use_vehicle_pos: {use_vehicle_pos}, loss: {open_loop_metrics['mae']}")
 
     return {
         'loss': open_loop_metrics['mae'],
         'status': STATUS_OK,
-        'params': {'num_waypoints': num_waypoints, 'reference_distance': reference_distance}
+        'params': {'num_waypoints': num_waypoints, 'reference_distance': reference_distance, 'use_vehicle_pos': use_vehicle_pos}
     }
 
 
