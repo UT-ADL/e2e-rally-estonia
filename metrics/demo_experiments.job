@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="Demo day experiments"
+#SBATCH --job-name="Experiments for thesis"
 #SBATCH --time=20:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
@@ -7,4 +7,4 @@
 module load any/python/3.8.3-conda
 source activate ros2
 
-srun ./closed_loop_metrics_demo.sh
+srun ./closed_loop_metrics_thesis.sh
