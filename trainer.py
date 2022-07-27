@@ -86,7 +86,6 @@ class Trainer:
                 first_wp_whiteness = metrics['first_wp_whiteness']
                 last_wp_mae = metrics['last_wp_mae']
                 last_wp_whiteness = metrics['last_wp_whiteness']
-                #frechet_distance = metrics['frechet_distance']
                 progress_bar.set_description(f'{best_loss_marker}epoch {epoch + 1}'
                                              f' | train loss: {train_loss:.4f}'
                                              f' | valid loss: {valid_loss:.4f}'
@@ -94,7 +93,6 @@ class Trainer:
                                              f' | 1_whiteness: {first_wp_whiteness:.4f}'
                                              f' | last_mae: {last_wp_mae:.4f}'
                                              f' | last_whiteness: {last_wp_whiteness:.4f}')
-                                             #f' | frechet: {frechet_distance:.4f}')
 
 
             if self.wandb_logging:
