@@ -42,7 +42,7 @@ def fit_circle(x, y):
     return xc_2, yc_2, R_2
 
 
-def calculate_steering_angle(waypoints, num_waypoints=2, ref_distance=8.5, use_vehicle_pos=True):
+def calculate_steering_angle(waypoints, num_waypoints=3, ref_distance=6.5, use_vehicle_pos=True):
 
     # use specified number of waypoints
     waypoints = waypoints[:2*num_waypoints]
