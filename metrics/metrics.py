@@ -25,7 +25,8 @@ def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_r
     mae = lat_errors.mean()
     rmse = np.sqrt((lat_errors ** 2).mean())
     failure_rate = len(lat_errors[lat_errors > failure_rate_threshold]) / float(len(lat_errors)) * 100
-    distance = calculate_distance(model_frames)
+    total_distance = calculate_total_distance(model_frames)
+    autonomous_distance = calculate_autonomous_distance(model_frames)
     interventions = calculate_interventions(model_frames)
 
     return {
@@ -33,8 +34,10 @@ def calculate_closed_loop_metrics(model_frames, expert_frames, fps=30, failure_r
         'rmse': rmse,
         'max': max,
         'failure_rate': failure_rate,
-        'distance': distance,
-        'distance_per_intervention': distance / interventions,
+        'total_distance': total_distance,
+        'autonomous_distance': autonomous_distance,
+        'autonomous_pct': autonomous_distance / total_distance,
+        'distance_per_intervention': autonomous_distance / interventions,
         'interventions': interventions,
         'whiteness': whiteness,
         'cmd_whiteness': cmd_whiteness,
@@ -149,13 +152,22 @@ def calculate_interventions(frames):
     return len(frames[frames.autonomous & (frames.autonomous_next == False)])
 
 
-def calculate_distance(frames):
+def calculate_autonomous_distance(frames):
     x1 = frames['position_x']
     y1 = frames['position_y']
     x2 = frames.shift(-1)['position_x']
     y2 = frames.shift(-1)['position_y']
     frames['distance'] = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
     return np.sum(frames[frames["autonomous"]]["distance"])
+
+def calculate_total_distance(frames):
+    x1 = frames['position_x']
+    y1 = frames['position_y']
+    x2 = frames.shift(-1)['position_x']
+    y2 = frames.shift(-1)['position_y']
+    frames['distance'] = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    return np.sum(frames["distance"])
 
 
 # Duplicated with read_frames_driving, should be removed
