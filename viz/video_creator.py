@@ -256,7 +256,7 @@ def draw_driving_frames(dataset, temp_frames_folder, output_modality):
 
         else:
             color = (0, 255, 0)
-            cv2.putText(frame, 'Mode:    MANUAL'.format(true_angle), (10, 1100), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2,
+            cv2.putText(frame, 'Mode:    MANUAL', (10, 1100), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2,
                         cv2.LINE_AA)
 
         cv2.putText(frame, 'Steering: {:.2f} deg'.format(true_angle), (10, 1150), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2,
