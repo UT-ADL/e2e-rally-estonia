@@ -7,6 +7,7 @@ import torch
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from functools import partial
 
 import trajectory as tr
 from camera_frame import CameraFrameTransformer
@@ -63,32 +64,9 @@ def optimize_lidar_crop(args):
     dataset = NvidiaValidationDataset(Path(args.dataset_path), "waypoints", n_branches=3, n_waypoints=10,
                                       metadata_file="nvidia_frames_ext.csv")
 
-    space = {
-        'reference_distance': hp.uniform('reference_distance', 1.0, 20.0),
-        'num_waypoints': hp.uniformint('num_waypoints', 2, 10),
-        'use_vehicle_pos': hp.choice('use_vehicle_pos', [True, False]),
-        'waypoints_source': args.waypoints_source,
-        'dataset_path': args.dataset_path,
-        'model_path': args.model_path,
-        'dataset': dataset
-    }
-
-    trials = Trials()
-    best = fmin(optimize_fun, space, trials=trials, algo=tpe.suggest, max_evals=args.max_evals, show_progressbar=False)
-
-    print(best)
-    print(trials.results)
-
-
-def optimize_fun(opt_args):
-    num_waypoints = opt_args['num_waypoints']
-    reference_distance = opt_args['reference_distance']
-    use_vehicle_pos = opt_args['use_vehicle_pos']
-    dataset = opt_args['dataset']
-
-    waypoints_source = opt_args['waypoints_source']
+    waypoints_source = args.waypoints_source
     if waypoints_source == 'model':
-        model = load_model(opt_args['model_path'])
+        model = load_model(args.model_path)
         dataloader = DataLoader(dataset, batch_size=128, shuffle=False, num_workers=8,
                                 pin_memory=True, persistent_workers=True)
         trainer = ConditionalTrainer()
@@ -102,13 +80,41 @@ def optimize_fun(opt_args):
         sys.exit()
 
     transformer = CameraFrameTransformer()
+    wp_baselink = []
+    for wp in tqdm(trajectories, desc="Transforming waypoints"):
+        wp_baselink.append(transformer.transform_waypoints(wp, "interfacea_link2"))
+ 
+
+    params = {
+        'reference_distance': hp.uniform('reference_distance', 1.0, 20.0),
+        'num_waypoints': hp.uniformint('num_waypoints', 2, 10),
+        'use_vehicle_pos': hp.choice('use_vehicle_pos', [True, False])
+    }
+
+    data = {
+        'true_steering': dataset.frames.steering_angle.to_numpy(),
+        'trajectories': wp_baselink
+    }
+
+    trials = Trials()
+    best = fmin(fn = partial(optimize_fun, data=data), space = params, trials=trials, algo=tpe.suggest, max_evals=args.max_evals, show_progressbar=False)
+
+    print(best)
+    print(trials.results)
+
+
+def optimize_fun(opt_args, data):
+    num_waypoints = opt_args['num_waypoints']
+    reference_distance = opt_args['reference_distance']
+    use_vehicle_pos = opt_args['use_vehicle_pos']
+    true_steering = data['true_steering']
+    trajectories = data['trajectories']
+    
     calculated_steering = []
     for wp in tqdm(trajectories, desc="Calculating steering angles"):
-        wp_baselink = transformer.transform_waypoints(wp, "interfacea_link2")
-        calculated_steering.append(tr.calculate_steering_angle(wp_baselink, num_waypoints,
+        calculated_steering.append(tr.calculate_steering_angle(wp, num_waypoints,
                                                                reference_distance, use_vehicle_pos))
-
-    true_steering = dataset.frames.steering_angle.to_numpy()
+    
     open_loop_metrics = calculate_open_loop_metrics(np.array(calculated_steering), true_steering, fps=30)
     print(f"reference distance: {reference_distance}, num_waypoints: {num_waypoints}, "
           f"use_vehicle_pos: {use_vehicle_pos}, loss: {open_loop_metrics['mae']}")
