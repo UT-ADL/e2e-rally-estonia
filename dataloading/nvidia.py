@@ -143,7 +143,7 @@ class Normalize(object):
 class NvidiaDataset(Dataset):
 
     def __init__(self, dataset_paths, transform=None, camera="front_wide", name="Nvidia dataset",
-                 filter_turns=False, output_modality="steering_angle", n_branches=1, n_waypoints=6,
+                 filter_turns=False, output_modality="steering_angle", n_branches=1, n_waypoints=10,
                  metadata_file="nvidia_frames.csv", color_space="rgb", side_cameras_weight=0.33):
         self.name = name
         self.metadata_file = metadata_file
