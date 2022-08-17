@@ -1,4 +1,4 @@
-# WP4 End-to-End Driving Dataset
+# Rally Estonia Dataset
 
 ## Bag files
 

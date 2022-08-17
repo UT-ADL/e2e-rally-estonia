@@ -1,8 +1,28 @@
 # Rally Estonia End-to-End Driving
 
-This repository contains framework to train end-to-end driving models using Rally Estonia dataset. Following papers can
-be reproduced using the framework:
- - [LiDAR-as-Camera for End-to-End Driving](./docs/lidar_as_camera.md) ([paper](https://drive.google.com/file/d/1S-YzcJccHsM0LTmpnaC91I5yWi1FQqPk/view))
+This repository contains a framework to train End-to-End driving models using the Rally Estonia dataset. It includes scripts
+as well dataset of over 750 km of driving in all seasons.
+
+## Articles and Theses
+
+Following work has been produced using the framework:
+ - [LiDAR-as-Camera for End-to-End Driving](./docs/lidar_as_camera.md) (ICRA2022 Workshop Article) 
+ - Comparing Output Modalities in End-to-End Driving (Master Thesis)
+ 
+Directory Structure
+------
+    .
+    ├── data_extract            # Code for extracting dataset from drive recordings
+    ├── dataloading             # Dataloaders for training models with PyTorch
+    ├── docs                    # Documentation, instructions for reproducing articles and theses
+    ├── metrics                 # Code used to calculate open and closed loop metrics.
+    ├── models                  # Models trained using the framework
+    └── notebooks               # Generic services
+        ├── lidar-as-camera     # 'LiDAR-as-Camera for End-to-End Driving' article related notebooks
+        ├── output-modalities   # 'Comparing Output Modalities in End-to-End Driving' master thesis related notebooks
+    ├── tensorrt                # Inference with TensorRT library 
+    ├── velocity_model          # Longitudinal model using predriven human trajectory to control vehicle's velocity.
+    ├── viz                     # Scripts for interpret model's behavior using Visual BackProp, creating videos from drives with overlay etc.
 
 ## Dataset
 
@@ -62,13 +82,4 @@ Use `--output-modality` parameter to use different prediction targets like steer
 
 Use `--model-type` parameter to use different model architectures like `pilotnet-conditional` and `pilotnet-control`.
 
-Use `--wandb-project` parameter to use log using W&B. To use without W&B, just omit this parameter. 
-
-### Visualising results
-
-To visualise trained models, use visualising scripts. Check out [visualising manual](./viz/README.md) for this.  
-
-![visualisation](./media/visualisation.png "visualisation")
-
-## Sub projects
-- [_velocity_model_](velocity_model/README.md) - logitudinal model using predriven human trajectory
+Use `--wandb-project` parameter to use log using W&B. To use without W&B, just omit this parameter.
