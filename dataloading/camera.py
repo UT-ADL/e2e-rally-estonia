@@ -10,6 +10,6 @@ class Camera(Enum):
 
 
 class TurnSignal(Enum):
-    LEFT = 2
+    LEFT = 0
     STRAIGHT = 1
-    RIGHT = 0
+    RIGHT = 2
