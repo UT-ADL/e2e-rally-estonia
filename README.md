@@ -31,7 +31,7 @@ To get access to the dataset, please fill out [this form](https://forms.gle/nDkw
 Before training a model, dataset needs to be downloaded and prepared . See [_dataloading_](./dataloading/README.md) manual for this. 
 
 ### Following input modalities are supported:
-- Nvidia RGB cameras (only front wide camera used currently)
+- Nvidia RGB cameras
 - Ouster LiDAR range, ambient, intensity image
 ![camera_crop](./media/camera-crops.png "Camera crop")
 
