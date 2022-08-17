@@ -1,7 +1,7 @@
 # Rally Estonia End-to-End Driving
 
-This repository contains a framework to train End-to-End driving models using the Rally Estonia dataset. It includes scripts
-as well dataset of over 750 km of driving in all seasons.
+This repository contains a framework to train End-to-End driving models using the Rally Estonia dataset. It includes 
+scripts to train models as well dataset of over 750 km of driving in all seasons.
 
 ## Articles and Theses
 
