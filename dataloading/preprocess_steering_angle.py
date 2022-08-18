@@ -6,7 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 
 import trajectory
-from dataloading.camera import Camera
+from dataloading.model import Camera
 from dataloading.nvidia import NvidiaValidationDataset, NvidiaTrainDataset
 
 
@@ -53,7 +53,6 @@ def create_steering_angles(frames_df, camera):
     for i in range(waypoints.shape[0]):
         calculated_steering_angle = trajectory.calculate_steering_angle(waypoints[i])
         steering_angles.append(calculated_steering_angle)
-        #print(trajectory_waypoints, calculated_steering_angle)
     frames_df[f"steering_angle_{camera}"] = steering_angles
 
 

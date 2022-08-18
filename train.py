@@ -10,7 +10,7 @@ from torch import Tensor
 from torch.nn import L1Loss, MSELoss
 from torch.utils.data import ConcatDataset, RandomSampler, WeightedRandomSampler
 #from torchsummary import summary
-from dataloading.camera import Camera, TurnSignal
+from dataloading.model import Camera, TurnSignal
 from dataloading.nvidia import NvidiaTrainDataset, NvidiaValidationDataset, NvidiaWinterTrainDataset, \
     NvidiaWinterValidationDataset, AugmentationConfig
 from dataloading.ouster import OusterTrainDataset, OusterValidationDataset

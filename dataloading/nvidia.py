@@ -13,7 +13,7 @@ import torchvision.transforms.functional as F
 
 from skimage.util import random_noise
 
-from dataloading.camera import Camera
+from dataloading.model import Camera
 
 
 class NvidiaResizeAndCrop(object):

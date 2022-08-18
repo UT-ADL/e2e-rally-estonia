@@ -1,7 +1,5 @@
 from enum import Enum
 
-# TODO: change file name
-
 
 class Camera(Enum):
     LEFT = "left"
@@ -10,6 +8,6 @@ class Camera(Enum):
 
 
 class TurnSignal(Enum):
-    LEFT = 0
+    LEFT = 2
     STRAIGHT = 1
-    RIGHT = 2
+    RIGHT = 0
