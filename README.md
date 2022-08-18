@@ -26,9 +26,12 @@ Directory Structure
 
 ## Dataset
 
-To get access to the dataset, please fill out [this form](https://forms.gle/nDkwcpzgBoYeJBE39).
-
-Before training a model, dataset needs to be downloaded and prepared . See [_dataloading_](./dataloading/README.md) manual for this. 
+Dataset can be accessed in two forms: ROS bags containing all the raw information from the drives or the extracted
+dataset stored in the University of Tartu Rocket HPC. The latter option is currently only available for people with UT credentials.
+Without UT credentials, access to the dataset can be obtained by filling out [this form](https://forms.gle/nDkwcpzgBoYeJBE39).
+Once the ROS bags are downloaded, dataset can be extracted using scripts provided in [_data_extract_](./data_extract/README.md) 
+package or custom extraction process can be developed. There is provided PyTorch data loaders in [_dataloading_](./dataloading/README.md)
+package for training models.
 
 ### Following input modalities are supported:
 - Nvidia RGB cameras
@@ -41,8 +44,8 @@ Before training a model, dataset needs to be downloaded and prepared . See [_dat
 - Steering angle
 - Trajectory waypoints (longitudinal part fixed)
 
-Only lateral control (steering) is predicted, longitudinal control (throttle) is not predicted and must be controlled using other means.
-
+Current models only predict lateral control (steering), longitudinal control (throttle) is not predicted and must be 
+controlled using other means.
 
 ## Training
 
