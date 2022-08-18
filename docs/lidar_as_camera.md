@@ -1,6 +1,9 @@
 # LiDAR-as-Camera for End-to-End Driving
 
-This repository contains the code to reproduce the experiments of the paper ["LiDAR-as-Camera for End-to-End Driving"](https://drive.google.com/file/d/1S-YzcJccHsM0LTmpnaC91I5yWi1FQqPk/view).
+This repository contains the code to reproduce the experiments of the article accepted for the "Fresh Perspectives on 
+the Future of  Autonomous Driving" workshop at the ICRA2022 conference.
+
+[Paper](https://drive.google.com/file/d/1S-YzcJccHsM0LTmpnaC91I5yWi1FQqPk/view) | [Poster](https://drive.google.com/file/d/17L6rjUkxi3OioBl_VK1TiMoHTvrWFSW1/view?usp=sharing) | [Video](https://youtu.be/qzo61V7G1EM?t=5761)
 
 ## Dataset
 
