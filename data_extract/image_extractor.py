@@ -279,7 +279,7 @@ class NvidiaDriveImporter:
     def create_camera_df(self, df, camera_name):
         camera_df = df[df["camera"] == camera_name]
         camera_df = camera_df.rename(columns={"filename": f"{camera_name}_filename"})
-        camera_df.drop(["camera"], 1, inplace=True)
+        camera_df.drop(labels=["camera"], axis=1, inplace=True)
         return camera_df
     
     def resize(self, img):
