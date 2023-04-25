@@ -8,7 +8,10 @@ about the bag files can be found in [spreadsheet](https://docs.google.com/spread
 ## Environment
 
 To extract bags, local ROS must be installed, which is easiest to do using:
-
+```bash
+conda env create -f ros.yml
+```
+or to create manually
 ```bash
 conda create -n ros ros-noetic-desktop pandas tqdm jupyter -c conda-forge -c robostack && conda activate ros
 ```
