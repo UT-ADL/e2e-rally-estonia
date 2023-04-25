@@ -95,7 +95,7 @@ nvidia-smi
 sinfo
 
 ```
-
+More infomration at [HPC documentation](https://docs.hpc.ut.ee/cluster/quickstart/)
 ### Avoid
 
 - Avoid launching  tasks on the login nodes
@@ -117,6 +117,6 @@ Afterward you can work with conda commands right away.  You can read more about 
 
 ### Models evaluation
 
-We use a simulation to evaluate the models. Which means we can test the trained models fast and safely. To setup the evaluation repository you can follow the guide presented the following repository. Please note that when you for the HPC, you don’t need to install system packages “sudo apt install …” 
+We use a simulation to evaluate the models. Which means we can test the trained models fast and safely. To setup the evaluation repository you can follow the guide presented in the below repository. **Please note** that when preparing the environment for the HPC, you don’t need to install system packages “sudo apt install …” 
 
-[https://github.com/UT-ADL/vista-evaluation/](https://github.com/UT-ADL/vista-evaluation/)
+[Vista-evaluation](https://github.com/UT-ADL/vista-evaluation/)
