@@ -404,18 +404,18 @@ class NvidiaValidationDataset(NvidiaDataset):
                  metadata_file="nvidia_frames.csv"):
         self.dataset_paths = [
             root_path / "2021-05-28-15-19-48_e2e_sulaoja_20_30",
-            root_path / "2021-06-07-14-20-07_e2e_rec_ss6",
+            #root_path / "2021-06-07-14-20-07_e2e_rec_ss6",
             root_path / "2021-06-07-14-06-31_e2e_rec_ss6",
             root_path / "2021-06-07-14-09-18_e2e_rec_ss6",
-            root_path / "2021-06-07-14-36-16_e2e_rec_ss6",
+            #root_path / "2021-06-07-14-36-16_e2e_rec_ss6",
             root_path / "2021-09-24-14-03-45_e2e_rec_ss11_backwards",
-            root_path / "2021-10-26-10-49-06_e2e_rec_ss20_elva",
-            root_path / "2021-10-26-11-08-59_e2e_rec_ss20_elva_back",
+            #root_path / "2021-10-26-10-49-06_e2e_rec_ss20_elva",
+            #root_path / "2021-10-26-11-08-59_e2e_rec_ss20_elva_back",
             root_path / "2021-10-20-15-11-29_e2e_rec_vastse_ss13_17_back",
             {'path': root_path / "2021-10-11-14-50-59_e2e_rec_vahi", 'start': 100, 'end': 15000},
             {'path': root_path / "2021-10-14-13-08-51_e2e_rec_vahi_backwards", 'start': 80, 'end': 13420},
-            root_path / "2022-06-10-13-23-01_e2e_elva_forward",
-            root_path / "2022-06-10-13-03-20_e2e_elva_backward"
+            #root_path / "2022-06-10-13-23-01_e2e_elva_forward",
+            #root_path / "2022-06-10-13-03-20_e2e_elva_backward"
         ]
 
         tr = transforms.Compose([Normalize()])
