@@ -149,7 +149,10 @@ class Trainer:
         model.load_state_dict(torch.load(f"{self.save_dir}/best.pt"))
         model.to(self.device)
 
-        data = iter(valid_loader).next()
+        #data = iter(valid_loader).next()
+        #Update to fix an issue of deprecated code.
+        data = iter(valid_loader)
+        data = next(data)
         sample_inputs = self.create_onxx_input(data)
         torch.onnx.export(model, sample_inputs, f"{self.save_dir}/best.onnx")
         onnx.checker.check_model(f"{self.save_dir}/best.onnx")
