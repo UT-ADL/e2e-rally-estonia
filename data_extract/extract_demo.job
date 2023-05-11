@@ -19,6 +19,6 @@ BAGS=(
     )
 
 module load any/python/3.8.3-conda
-source activate ros2
+source activate ros
 
 srun ./extract_rocket_demo.sh ${BAGS[$SLURM_ARRAY_TASK_ID]}  /gpfs/space/projects/Bolt/dataset-demo-small

@@ -5,7 +5,7 @@
 #SBATCH --partition=main
 
 module load python/3.6.3/virtenv
-source activate ros2
+source activate ros
 
 rosbag reindex /gpfs/space/projects/Bolt/bagfiles/2021-10-11-16-06-44_e2e_rec_ss2.bag.active
 rosbag fix /gpfs/space/projects/Bolt/bagfiles/2021-10-11-16-06-44_e2e_rec_ss2.bag.active /gpfs/space/projects/Bolt/bagfiles/2021-10-11-16-06-44_e2e_rec_ss2.bag

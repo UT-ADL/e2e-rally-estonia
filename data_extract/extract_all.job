@@ -159,7 +159,7 @@ BAGS=(
     )
 
 module load any/python/3.8.3-conda
-source activate ros2
+source activate ros
 cd /gpfs/space/home/rometaid/nvidia-e2e/data_extract
 
 srun ./extract_rocket.sh ${BAGS[$SLURM_ARRAY_TASK_ID]}  /gpfs/space/projects/Bolt/dataset
