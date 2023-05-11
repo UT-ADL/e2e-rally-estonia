@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="Extract driving data from bag file"
+#SBATCH -A "bolt"
 #SBATCH --time=20:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=main
