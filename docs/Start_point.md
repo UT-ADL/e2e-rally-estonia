@@ -130,6 +130,10 @@ Info regarding [mamba here](https://anaconda.org/conda-forge/mamba). Note that a
 - Create the training environment. (This might take time,  10 - 60 minutes)
     
     ```bash
+    #Clone this repository
+    git clone https://github.com/UT-ADL/e2e-rally-estonia.git
+    cd e2e-rally-estonia
+    
     #if mamba installed
     mamba env create -f e2e.yml
     #else 
