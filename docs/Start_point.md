@@ -185,3 +185,14 @@ python train.py --input-modality nvidia-camera --output-modality steering_angle 
 We use a simulation to evaluate the models. Which means we can test the trained models fast and safely. To setup the evaluation repository you can follow the guide presented in the below repository. **Please note** that when preparing the environment for the HPC, you don’t need to install system packages “sudo apt install …” 
 
 [Vista-evaluation](https://github.com/UT-ADL/vista-evaluation/)
+
+### Model adaptation
+Onnx models trained using e2e-rally-estonia includes the batch size in the input/output of the model, which raises an error during evaluation. Adapting the following code to your model would resolve the error:
+
+```python
+import onnx
+model = onnx.load("model.onnx")
+model.graph.input[0].type.tensor_type.shape.dim[0].dim_value = 1
+model.graph.output[0].type.tensor_type.shape.dim[0].dim_value =1
+model.save("model_modified.onnx")
+```
