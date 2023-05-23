@@ -346,12 +346,12 @@ class NvidiaTrainDataset(NvidiaDataset):
     def __init__(self, root_path, output_modality="steering_angle", n_branches=3, n_waypoints=10,
                  camera="front_wide", augment_conf=AugmentationConfig(), metadata_file="nvidia_frames.csv"):
         self.dataset_paths = [
-            # root_path / "2021-05-20-12-36-10_e2e_sulaoja_20_30",
-            # root_path / "2021-05-20-12-43-17_e2e_sulaoja_20_30",
-            # root_path / "2021-05-20-12-51-29_e2e_sulaoja_20_30",
-            # root_path / "2021-05-20-13-44-06_e2e_sulaoja_10_10",
-            # root_path / "2021-05-20-13-51-21_e2e_sulaoja_10_10",
-            # root_path / "2021-05-20-13-59-00_e2e_sulaoja_10_10",
+            root_path / "2021-05-20-12-36-10_e2e_sulaoja_20_30",
+            root_path / "2021-05-20-12-43-17_e2e_sulaoja_20_30",
+            root_path / "2021-05-20-12-51-29_e2e_sulaoja_20_30",
+            root_path / "2021-05-20-13-44-06_e2e_sulaoja_10_10",
+            root_path / "2021-05-20-13-51-21_e2e_sulaoja_10_10",
+            root_path / "2021-05-20-13-59-00_e2e_sulaoja_10_10",
             root_path / "2021-05-28-15-07-56_e2e_sulaoja_20_30",
             root_path / "2021-05-28-15-17-19_e2e_sulaoja_20_30",
             {'path': root_path / "2021-06-09-13-14-51_e2e_rec_ss2", 'start': 125, 'end': 49725},
