@@ -7,7 +7,7 @@ import pandas as pd
 import torch
 import wandb
 from torch import Tensor
-from torch.nn import L1Loss, MSELoss
+from torch.nn import L1Loss, MSELoss, HuberLoss
 from torch.utils.data import ConcatDataset, RandomSampler, WeightedRandomSampler
 #from torchsummary import summary
 from dataloading.model import Camera, TurnSignal
@@ -197,7 +197,7 @@ def parse_arguments():
     argparser.add_argument(
         '--loss',
         required=False,
-        choices=['mse', 'mae', 'mse-weighted', 'mae-weighted'],
+        choices=['mse', 'mae', 'mse-weighted', 'mae-weighted','huber-loss'],
         default='mae',
         help='Loss function used for training.'
     )
@@ -339,6 +339,8 @@ def train_model(model_name, train_conf, augment_conf):
         criterion = MSELoss()
     elif train_conf.loss == "mae":
         criterion = L1Loss()
+    elif train_conf.loss == "huber-loss":
+        criterion = HuberLoss(reduction='mean', delta=1.0)
     elif train_conf.loss == "mse-weighted":
         criterion = WeighedMSELoss(weights)
     elif train_conf.loss == "mae-weighted":
