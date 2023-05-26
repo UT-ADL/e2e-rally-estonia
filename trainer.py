@@ -156,6 +156,12 @@ class Trainer:
         sample_inputs = self.create_onxx_input(data)
         torch.onnx.export(model, sample_inputs, f"{self.save_dir}/best.onnx")
         onnx.checker.check_model(f"{self.save_dir}/best.onnx")
+        #Remove batch size from the input/output
+        m = onnx.load(f"{self.save_dir}/best.onnx")
+        m.graph.input[0].type.tensor_type.shape.dim[0].dim_value = 1
+        m.graph.output[0].type.tensor_type.shape.dim[0].dim_value =1
+        onnx.save(m,f"{self.save_dir}/best.onnx")
+
         if self.wandb_logging:
             wandb.save(f"{self.save_dir}/best.onnx")
 
