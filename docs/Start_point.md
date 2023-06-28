@@ -75,7 +75,12 @@ There are two ways to launch task on the cluster:
     #SBATCH --mem=5000
     
     module load ffmpeg
-    module load any/python/3.8.3-conda
+    
+    # When you load cluster conda
+    #module load any/python/3.8.3-conda
+    #When you use your installed conda (more later)
+    source ~/miniconda3/etc/profile.d/conda.sh
+    conda activate environment_name
     python .....
     ```
     
@@ -106,15 +111,20 @@ sinfo
 
 There are many packages that need to be installed, and different tasks might need confilicting packages. It is always recommended to use Anaconda.
 
-Anaconda is package management services that allows you to create different environments while keeping each environment packages seperated from the other.
+Anaconda is package management service that allows you to create different environments while keeping each environment packages seperated from the other.
 
-You can start using anaconda (here conda as the light version of anaconda) by  
+To install anaconda, first copy the link suitable for your machine (for cluster, use "Miniconda3 Linux 64-bit") from [here](https://docs.conda.io/en/main/miniconda.html)
+
+Afterwards use the following commands:
 
 ```bash
-module load any/python/3.8.3-conda
+wget [Link]
+chmod +x Miniconda3-latest-Linux-x86_64.sh
+./Miniconda3-latest-Linux-x86_64.sh
 ```
+After Following installations steps, you might need to relogin or ```source ~/.bashrc``` to be able to start using conda commands read more about [conda here](https://conda.io/projects/conda/en/latest/user-guide/getting-started.html) .
 
-Afterward you can work with conda commands right away.  You can read more about [conda here](https://conda.io/projects/conda/en/latest/user-guide/getting-started.html) .
+Remember to adapt the conda directory if you changed it in sbatch files.
 
 - ************************************Installing mamba:************************************ Due to large dependencies between packages, the conda default packages resolver might take long time. Installing mamba will decrease the resolving time significantly. To install mamba :
     
@@ -176,8 +186,10 @@ python train.py --input-modality nvidia-camera --output-modality steering_angle 
     - Using `rsync` is not essential (save 1 minute per epoch) but It can be usefule at time of network conjestion. **Only use the below command to** prevent doubling the space if multiple teams used different names.
     
     ```bash
-     rsync /gpfs/space/projects/tmp/rally-estonia-cropped-antialias /tmp/    
+     rsync /gpfs/space/projects/tmp/rally-estonia-cropped-antialias /tmp/
     ```
+    
+    - You can download files from the cluster to your local machine by using ```scp``` command.
     
 
 ## Models evaluation
