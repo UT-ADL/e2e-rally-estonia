@@ -206,5 +206,5 @@ import onnx
 model = onnx.load("model.onnx")
 model.graph.input[0].type.tensor_type.shape.dim[0].dim_value = 1
 model.graph.output[0].type.tensor_type.shape.dim[0].dim_value =1
-model.save("model_modified.onnx")
+onnx.save("model_modified.onnx")
 ```
