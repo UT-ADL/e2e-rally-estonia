@@ -42,11 +42,10 @@ Slurm is a workload manager to assure healthy competition over resources. This m
 
 In slurm, to avoid everyone downloading same things and waste space, there are an existing library that each user can load. 
 
-For example, you can load “conda” or “ffmpeg” without installing them yourself.
+For example, you can load “ffmpeg” without installing them yourself.
 
 ```bash
 module load ffmpeg
-module load any/python/3.8.3-conda
 ```
 
 ### Work sessions
