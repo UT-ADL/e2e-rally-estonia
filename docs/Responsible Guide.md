@@ -85,9 +85,7 @@ Traces conversion is done through [vista-evaluate](https://github.com/UT-ADL/vis
 Creating training data depends on [e2e-rally-estoina](https://github.com/UT-ADL/e2e-rally-estonia) repository. Make sure you git the repo before continuing.
 
 - **Creating environment on the HPC**
-    - First, download following file to HPC (you can use scp command for that)
-        
-        [ros.yml](Responsible%20Technical%20guide%2069beda1f64b94fefa24b3610de06d9a0/ros.yml)
+    - Use [ros.yml](https://github.com/UT-ADL/e2e-rally-estonia/blob/master/data_extract/ros.yml) in `data_extract`
         
     
     ```bash
@@ -185,7 +183,34 @@ roslaunch e2e_platform start_bag.launch bag_file:=2021-06-07-14-36-16_e2e_rec_ss
 - **Soft bugs to fix**
     - Falcon 4 bug. It occure on falcon 4. Need to be replicated then reported to HPC.
         
-        ![IMG_0920.png](Responsible%20Technical%20guide%2069beda1f64b94fefa24b3610de06d9a0/IMG_0920.png)
+        ```bash
+        Traceback (most recent call last):
+        File "evaluate-py", line 260, in ‹module>
+        camera = car.spawn_camera(config={'name': "camera_front', 'size': camera_size, 'depth_mode': Dept
+        hModes. MONODEPTH})
+        File "/gpfs/space/home/anish/.conda/envs/vista/lib/python3.8/site-packages/vista/entities/agents/Ca r-py", line 119, in spawn_camera
+        cam = Camera(attach_to=self, config=config)
+        File "/gpfs/space/home/anish/.conda/envs/vista/lib/python3.8/site-packages/vista/entities/sensors/c amera.py", line 69, in _init
+        self._view_synthests: ViewSynthesis = Viewsynthests
+        File "/gpfs/space/home/anish/.conda/envs/vista/lib/python3.8/site-packages/vista/entities/sensors/c amera_utils/Viewsynthests-py", line 56, in _intt_
+        self._renderer = pyrender.OffscreenRenderer
+        File "/gpfs/space/home/anish/.conda/envs/vista/lib/python3.8/site-packages/pyrender/offscreen-py", line 31, in _init_ self._create()
+        File "/gpfs/space/home/anish/.conda/envs/vista/lib/python3.8/site-packages/pyrender/offscreen-py",
+        Line 149, in _create
+        self._platform. init_context)
+        File "/gpfs/space/home/anish/.conda/envs/vista/lib/python3.8/site-packages/pyrender/platforms/egl.p y" , line 177, in init_context
+        assert eglInitialize(self_egl_display, major, minor)
+        File "/gpfs/space/home/anish/conda/envs/vista/lib/python3.8/site-packages/OpenGL/platform/baseplat form.py", line 402, in (named)
+        return self *args,
+        File "/gpfs/space/home/anish/.conda/envs/vista/lib/python3.8/site-packages/OpenGL/error.py", line 2 28, in glcheckError raise GLError
+        OpenGL. error. GLError: GLError
+        егг = 12296,
+        baseOperation = eglInitialize,
+        cArguments = (
+        <OpenGL._opaque. EGLDisplay_pointer object at 0x2b4a4af22840>, c_long (0), c_long(0),
+        ),
+        result = 0
+        ```
         
     - On Converting bagfiles to traces. Some bagfiles time for turnsignal start before the time for images. Which raise an error when introplating the turn signal between two times at the start. Setting the first time stamp for turn signal identical to first image would resolve the issue.
     - The seconds after crash can only be integer currently. Using a float (0.5) raise an error.
